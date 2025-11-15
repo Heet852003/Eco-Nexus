@@ -1,0 +1,32 @@
+{
+  "name": "eco-nexus-backend",
+  "version": "1.0.0",
+  "description": "Eco-Nexus SCOS Backend API",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "axios": "^1.7.2",
+    "@solana/web3.js": "^1.87.6",
+    "@solana/spl-token": "^0.3.9",
+    "snowflake-sdk": "^1.9.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  },
+  "keywords": [
+    "sustainability",
+    "api",
+    "express"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+

@@ -1,0 +1,21 @@
+{
+  "name": "eco-nexus",
+  "version": "1.0.0",
+  "description": "Sustainable Choice Operating System - Hackathon Project",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "install:all": "cd frontend && npm install && cd ../backend && npm install",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build"
+  },
+  "keywords": [
+    "sustainability",
+    "multi-agent",
+    "blockchain",
+    "hackathon"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+
