@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { login, register, updateUserRole, getUserProfile } from '@/lib/api'
 import type { User } from '@/types'
+import { logger } from '@/lib/logger'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -25,7 +26,7 @@ export function useAuth() {
         setUser(JSON.parse(storedUser))
       }
     } catch (error) {
-      console.error('Error reading from localStorage:', error)
+      logger.error('Error reading from localStorage:', error)
     } finally {
       setLoading(false)
     }
@@ -53,7 +54,7 @@ export function useAuth() {
       }
       return data
     } catch (error: any) {
-      console.error('Registration error:', error)
+      logger.error('Registration error:', error)
       throw error
     }
   }
@@ -70,7 +71,7 @@ export function useAuth() {
       }
       return data
     } catch (error) {
-      console.error('Update role error:', error)
+      logger.error('Update role error:', error)
       throw error
     }
   }
@@ -110,7 +111,7 @@ export function useAuth() {
         return newUser
       }
     } catch (error) {
-      console.error('Failed to refresh user:', error)
+      logger.error('Failed to refresh user:', error)
     }
     return null
   }, [])

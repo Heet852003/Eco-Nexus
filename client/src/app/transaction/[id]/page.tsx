@@ -13,6 +13,7 @@ import type { Transaction } from '@/types'
 import { ArrowLeft, CheckCircle, DollarSign, Leaf, Clock, Award, Link as LinkIcon, Loader } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import { logger } from '@/lib/logger'
 
 export default function TransactionDetailPage() {
   const router = useRouter()
@@ -50,7 +51,7 @@ export default function TransactionDetailPage() {
     setCommitting(true)
     try {
       const result = await commitTransactionToBlockchain(transaction.id)
-      console.log('✅ Blockchain commit result:', result)
+      logger.log('✅ Blockchain commit result:', result)
       
       // Fetch updated transaction
       await new Promise(resolve => setTimeout(resolve, 1500)) // Wait for backend to update
@@ -59,13 +60,11 @@ export default function TransactionDetailPage() {
       // Refresh user to get updated sustainability score
       if (refreshUser) {
         await refreshUser()
-        console.log('✅ User refreshed after blockchain commit')
       }
       
       toast.success('Transaction committed to blockchain! Sustainability scores updated.')
       
       // Trigger analytics refresh event for other pages
-      console.log('📢 Dispatching analytics-updated event')
       window.dispatchEvent(new Event('analytics-updated'))
       window.dispatchEvent(new Event('user-updated'))
       
@@ -74,7 +73,7 @@ export default function TransactionDetailPage() {
         window.location.reload()
       }
     } catch (error: any) {
-      console.error('❌ Blockchain commit error:', error)
+      logger.error('❌ Blockchain commit error:', error)
       const errorMessage = error.response?.data?.error || 
                           error.response?.data?.details || 
                           error.message || 
@@ -83,7 +82,7 @@ export default function TransactionDetailPage() {
       
       // Log full error details for debugging
       if (error.response?.data) {
-        console.error('Error details:', error.response.data)
+        logger.error('Error details:', error.response.data)
       }
     } finally {
       setCommitting(false)
@@ -159,10 +158,11 @@ export default function TransactionDetailPage() {
                 </div>
               )}
             </div>
+            </div>
           </div>
 
           <div className="space-y-6">
-            {(transaction.status === 'pending' || transaction.status === 'PENDING') && (isBuyer || isSeller) && (
+            {((transaction.status === 'pending' || transaction.status === 'PENDING') && (isBuyer || isSeller)) && (
               <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl shadow-2xl">
                 <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
                 <div className="relative z-10">
@@ -176,23 +176,24 @@ export default function TransactionDetailPage() {
                     disabled={committing}
                     className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold shadow-lg shadow-green-600/30 transition disabled:opacity-50"
                   >
-                  {committing ? (
-                    <>
-                      <Loader className="w-5 h-5 animate-spin" />
-                      Committing...
-                    </>
-                  ) : (
-                    <>
-                      <LinkIcon className="w-5 h-5" />
-                      Commit to Blockchain
-                    </>
-                  )}
-                </button>
+                    {committing ? (
+                      <>
+                        <Loader className="w-5 h-5 animate-spin" />
+                        Committing...
+                      </>
+                    ) : (
+                      <>
+                        <LinkIcon className="w-5 h-5" />
+                        Commit to Blockchain
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 
-            {(transaction.status === 'committed' || transaction.status === 'COMMITTED' || transaction.status === 'completed' || transaction.status === 'COMPLETED') ? (
-              <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl shadow-2xl bg-green-500/5">
+            {(transaction.status === 'committed' || transaction.status === 'COMMITTED' || transaction.status === 'completed' || transaction.status === 'COMPLETED') && (
+              <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl shadow-2xl">
                 <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
                 <div className="relative z-10">
                   <div className="flex items-center gap-3 mb-4">
@@ -212,7 +213,7 @@ export default function TransactionDetailPage() {
                   )}
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
         </div>
       </div>

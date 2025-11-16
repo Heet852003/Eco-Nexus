@@ -11,15 +11,19 @@ import {
   createNegotiationThread, 
   getNegotiationThread, 
   sendNegotiationMessage,
-  getNegotiationMessages 
+  getNegotiationMessages,
+  triggerAgentNegotiation,
+  updateNegotiationGuidelines,
+  extractNegotiatedTerms
 } from '@/lib/api'
-import { MessageCircle, Send, Bot, User, Lightbulb } from 'lucide-react'
+import { MessageCircle, Send, Bot, User, Lightbulb, Sparkles, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { logger } from '@/lib/logger'
 
 interface ChatMessage {
   id: string
   senderId: string | null
-  senderType: 'BUYER' | 'SELLER' | 'AGENT'
+  senderType: 'BUYER' | 'SELLER' | 'AGENT' | 'AGENT_BUYER' | 'AGENT_SELLER'
   senderName: string
   content: string
   timestamp: string
@@ -51,6 +55,11 @@ export default function NegotiationChat({
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [agentNegotiating, setAgentNegotiating] = useState(false)
+  const [showGuidelinesModal, setShowGuidelinesModal] = useState(false)
+  const [guidelines, setGuidelines] = useState('')
+  const [threadGuidelines, setThreadGuidelines] = useState<{ buyerGuidelines: string | null, sellerGuidelines: string | null }>({ buyerGuidelines: null, sellerGuidelines: null })
+  const [autoNegotiate, setAutoNegotiate] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const isBuyer = user?.id === buyerId
@@ -76,6 +85,64 @@ export default function NegotiationChat({
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const startAgentNegotiation = async (threadId: string, maxRounds: number = 3) => {
+    if (agentNegotiating) return
+    
+    setAgentNegotiating(true)
+    let rounds = 0
+    let agreementReached = false
+    
+    try {
+      while (rounds < maxRounds && !agreementReached) {
+        rounds++
+        logger.log(`🔄 Starting negotiation round ${rounds}/${maxRounds}`)
+        
+        const result = await triggerAgentNegotiation(threadId)
+        
+        if (result.buyerAgentMessage && result.sellerAgentMessage) {
+          await loadMessages(threadId)
+          
+          if (result.agreementReached) {
+            agreementReached = true
+            
+            // Wait a bit for confirmation messages to be generated
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            
+            // Reload messages to get confirmation messages
+            await loadMessages(threadId)
+            
+            toast.success(`✅ Agreement reached after ${rounds} rounds!`)
+            logger.log('✅ Agents reached an agreement!')
+            break
+          } else {
+            logger.log(`📊 Round ${rounds} completed, continuing...`)
+            // Wait 2 seconds before next round
+            await new Promise(resolve => setTimeout(resolve, 2000))
+          }
+        } else {
+          logger.error('❌ Failed to get agent messages')
+          break
+        }
+      }
+      
+      if (!agreementReached && rounds >= maxRounds) {
+        toast('ℹ️ Maximum rounds reached. Agents are still negotiating.', { icon: '⏱️' })
+        logger.log(`⏱️ Reached maximum rounds (${maxRounds})`)
+      }
+    } catch (error: any) {
+      logger.error('Failed to start agent negotiation:', error)
+      const errorMsg = error.response?.data?.error || error.response?.data?.details || 'Failed to start agent negotiation'
+      if (errorMsg.includes('guidelines')) {
+        toast.error('Both parties must provide guidelines first')
+        setShowGuidelinesModal(true)
+      } else {
+        toast.error(errorMsg)
+      }
+    } finally {
+      setAgentNegotiating(false)
+    }
   }
 
   const initializeThread = async () => {
@@ -123,10 +190,25 @@ export default function NegotiationChat({
 
       if (thread) {
         setThreadId(thread.id)
+        setThreadGuidelines({
+          buyerGuidelines: thread.buyerGuidelines || null,
+          sellerGuidelines: thread.sellerGuidelines || null
+        })
         await loadMessages(thread.id)
+        
+        // Check if both guidelines are set and auto-start negotiation
+        if (thread.buyerGuidelines && thread.sellerGuidelines && !autoNegotiate) {
+          setAutoNegotiate(true)
+          // Auto-start agent negotiation after a short delay
+          setTimeout(async () => {
+            if (thread.id) {
+              await startAgentNegotiation(thread.id)
+            }
+          }, 1000)
+        }
       }
     } catch (error: any) {
-      console.error('Failed to initialize thread:', error)
+      logger.error('Failed to initialize thread:', error)
       toast.error(error.response?.data?.error || 'Failed to start negotiation')
     } finally {
       setLoading(false)
@@ -139,8 +221,40 @@ export default function NegotiationChat({
       if (data?.messages) {
         setMessages(data.messages)
       }
+      if (data?.thread) {
+        setThreadGuidelines({
+          buyerGuidelines: data.thread.buyerGuidelines || null,
+          sellerGuidelines: data.thread.sellerGuidelines || null
+        })
+      }
     } catch (error: any) {
-      console.error('Failed to load messages:', error)
+      logger.error('Failed to load messages:', error)
+    }
+  }
+
+  const handleSaveGuidelines = async () => {
+    if (!threadId || !guidelines.trim()) {
+      toast.error('Please enter your guidelines')
+      return
+    }
+
+    try {
+      await updateNegotiationGuidelines(threadId, guidelines.trim())
+      toast.success('Guidelines saved!')
+      setShowGuidelinesModal(false)
+      setGuidelines('')
+      await loadMessages(threadId)
+      
+      // Check if both guidelines are now set and auto-start
+      const data = await getNegotiationThread(threadId)
+      if (data?.thread?.buyerGuidelines && data?.thread?.sellerGuidelines) {
+        setTimeout(() => {
+          startAgentNegotiation(threadId)
+        }, 500)
+      }
+    } catch (error: any) {
+      logger.error('Failed to save guidelines:', error)
+      toast.error(error.response?.data?.error || 'Failed to save guidelines')
     }
   }
 
@@ -172,24 +286,59 @@ export default function NegotiationChat({
   useEffect(() => {
     if (!threadId) return
 
-    const interval = setInterval(() => {
-      loadMessages(threadId)
+    const interval = setInterval(async () => {
+      const oldMessageCount = messages.length
+      await loadMessages(threadId)
+      
+      // Check if new agent messages were added
+      const data = await getNegotiationThread(threadId)
+      if (data?.messages) {
+        const newMessageCount = data.messages.length
+        const agentMessages = data.messages.filter((m: ChatMessage) => 
+          m.senderType === 'AGENT_BUYER' || m.senderType === 'AGENT_SELLER'
+        )
+        
+        // If we have agent messages and both guidelines are set, agents can continue negotiating
+        if (agentMessages.length >= 2 && 
+            threadGuidelines.buyerGuidelines && 
+            threadGuidelines.sellerGuidelines &&
+            !agentNegotiating &&
+            newMessageCount > oldMessageCount) {
+          // Check if last two messages are from different agents (one round complete)
+          const lastTwo = data.messages.slice(-2)
+          if (lastTwo.length === 2 && 
+              ((lastTwo[0].senderType === 'AGENT_BUYER' && lastTwo[1].senderType === 'AGENT_SELLER') ||
+               (lastTwo[0].senderType === 'AGENT_SELLER' && lastTwo[1].senderType === 'AGENT_BUYER'))) {
+            // Agents completed a round, can continue
+            // Auto-continue after a short delay (optional - can be disabled)
+            // setTimeout(() => {
+            //   startAgentNegotiation(threadId)
+            // }, 2000)
+          }
+        }
+      }
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [threadId])
+  }, [threadId, messages.length, threadGuidelines, agentNegotiating])
 
   const getMessageAlignment = (senderType: string) => {
-    if (senderType === 'AGENT') return 'center'
+    if (senderType === 'AGENT' || senderType === 'AGENT_BUYER' || senderType === 'AGENT_SELLER') return 'center'
     if (senderType === 'BUYER' && isBuyer) return 'right'
     if (senderType === 'SELLER' && isSeller) return 'right'
     return 'left'
   }
 
   const getMessageColor = (senderType: string) => {
+    if (senderType === 'AGENT_BUYER') return 'bg-purple-700 border-purple-600'
+    if (senderType === 'AGENT_SELLER') return 'bg-cyan-700 border-cyan-600'
     if (senderType === 'AGENT') return 'bg-gray-700 border-gray-600'
     if (senderType === 'BUYER') return 'bg-primary-600 border-primary-500'
     return 'bg-blue-600 border-blue-500'
+  }
+
+  const isAgentMessage = (senderType: string) => {
+    return senderType === 'AGENT' || senderType === 'AGENT_BUYER' || senderType === 'AGENT_SELLER'
   }
 
   if (loading) {
@@ -226,20 +375,48 @@ export default function NegotiationChat({
     <div className="glass rounded-xl border border-primary-500/20 flex flex-col h-[600px]">
       {/* Header */}
       <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-bold text-white">Negotiation Chat</h3>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-bold text-white">Negotiation Chat</h3>
+            {agentNegotiating && (
+              <div className="flex items-center gap-2 text-sm text-purple-400">
+                <Bot className="w-4 h-4 animate-pulse" />
+                <span>Agents negotiating...</span>
+              </div>
+            )}
+          </div>
           <p className="text-sm text-gray-400">
             {isBuyer ? `Negotiating with ${sellerName}` : `Negotiating with buyer`}
           </p>
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition"
-          >
-            ✕
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {(!threadGuidelines.buyerGuidelines || !threadGuidelines.sellerGuidelines) && (
+            <button
+              onClick={() => setShowGuidelinesModal(true)}
+              className="px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition text-sm flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              Set Guidelines
+            </button>
+          )}
+          {threadGuidelines.buyerGuidelines && threadGuidelines.sellerGuidelines && !agentNegotiating && (
+            <button
+              onClick={() => threadId && startAgentNegotiation(threadId)}
+              className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-500 transition text-sm flex items-center gap-2"
+            >
+              <Bot className="w-4 h-4" />
+              Start Agent Negotiation
+            </button>
+          )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -263,16 +440,16 @@ export default function NegotiationChat({
               >
                 <div
                   className={`max-w-[70%] rounded-lg p-3 border ${
-                    message.senderType === 'AGENT'
-                      ? 'bg-gray-700 border-gray-600'
+                    isAgentMessage(message.senderType)
+                      ? getMessageColor(message.senderType)
                       : isOwnMessage
                       ? 'bg-primary-600 border-primary-500'
                       : 'bg-blue-600 border-blue-500'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    {message.senderType === 'AGENT' ? (
-                      <Bot className="w-4 h-4 text-gray-300" />
+                    {isAgentMessage(message.senderType) ? (
+                      <Bot className="w-4 h-4 text-white" />
                     ) : (
                       <User className="w-4 h-4 text-white" />
                     )}
@@ -324,10 +501,88 @@ export default function NegotiationChat({
             {sending ? 'Sending...' : 'Send'}
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          AI assistant will provide negotiation hints
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-gray-500">
+            {agentNegotiating 
+              ? '🤖 Agents are negotiating automatically...' 
+              : threadGuidelines.buyerGuidelines && threadGuidelines.sellerGuidelines
+              ? '💡 Agents can negotiate automatically'
+              : '💡 Set guidelines to enable agent negotiation'}
+          </p>
+          {threadGuidelines.buyerGuidelines && 
+           threadGuidelines.sellerGuidelines && 
+           !agentNegotiating && 
+           messages.some(m => m.senderType === 'AGENT_BUYER' || m.senderType === 'AGENT_SELLER') && (
+            <button
+              onClick={() => threadId && startAgentNegotiation(threadId)}
+              className="px-3 py-1 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition flex items-center gap-1"
+            >
+              <Bot className="w-3 h-3" />
+              Continue Negotiation
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Guidelines Modal */}
+      {showGuidelinesModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white">Set Agent Guidelines</h3>
+              <button
+                onClick={() => {
+                  setShowGuidelinesModal(false)
+                  setGuidelines('')
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              Provide instructions for your agent on how to negotiate. For example: "Try to get at least 10% discount" or "Prioritize faster delivery over price".
+            </p>
+            <textarea
+              value={guidelines}
+              onChange={(e) => setGuidelines(e.target.value)}
+              placeholder="Enter your negotiation guidelines..."
+              className="w-full px-4 py-3 bg-dark-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500 mb-4 min-h-[120px]"
+            />
+            <div className="flex items-center gap-4 mb-4 text-sm">
+              <div className="flex-1">
+                <p className="text-gray-400 mb-1">Buyer Guidelines:</p>
+                <p className={`font-semibold ${threadGuidelines.buyerGuidelines ? 'text-green-400' : 'text-gray-500'}`}>
+                  {threadGuidelines.buyerGuidelines ? '✓ Set' : 'Not set'}
+                </p>
+              </div>
+              <div className="flex-1">
+                <p className="text-gray-400 mb-1">Seller Guidelines:</p>
+                <p className={`font-semibold ${threadGuidelines.sellerGuidelines ? 'text-green-400' : 'text-gray-500'}`}>
+                  {threadGuidelines.sellerGuidelines ? '✓ Set' : 'Not set'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveGuidelines}
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-500 transition"
+              >
+                Save Guidelines
+              </button>
+              <button
+                onClick={() => {
+                  setShowGuidelinesModal(false)
+                  setGuidelines('')
+                }}
+                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

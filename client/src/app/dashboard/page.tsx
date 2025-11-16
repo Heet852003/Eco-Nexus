@@ -13,7 +13,8 @@ import { TrendingUp, Award, Sparkles, Search, FileText, ArrowRight } from 'lucid
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { PlanetBackground } from '@/components/PlanetBackground'
+import { LightBackground } from '@/components/LightBackground'
+import { logger } from '@/lib/logger'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -69,7 +70,7 @@ export default function DashboardPage() {
       const data = await getDashboard()
       setDashboardData(data)
     } catch (error: any) {
-      console.error('Failed to load dashboard:', error)
+      logger.error('Failed to load dashboard:', error)
       // If it's a 401/403, redirect to login
       if (error.response?.status === 401 || error.response?.status === 403) {
         router.push('/login')
@@ -95,10 +96,7 @@ export default function DashboardPage() {
 
   return (
     <section className="relative min-h-screen pt-32 pb-24 px-6 overflow-hidden bg-[#0a0a0a]">
-      <PlanetBackground />
-      
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-green-500/5 via-transparent to-transparent" />
+      <LightBackground />
       
       <Navbar />
       

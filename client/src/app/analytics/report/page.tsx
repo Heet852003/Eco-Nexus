@@ -11,6 +11,7 @@ import Navbar from '@/components/Navbar'
 import { useAuth } from '@/hooks/useAuth'
 import { getReportAnalytics } from '@/lib/api'
 import { Download, FileText, TrendingUp, Leaf, DollarSign, Package, Award } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 interface ReportAnalytics {
   totalAmountPurchased: number
@@ -68,7 +69,7 @@ export default function ReportPage() {
       const data = await getReportAnalytics()
       setAnalytics(data)
     } catch (error: any) {
-      console.error('Failed to load report analytics:', error)
+      logger.error('Failed to load report analytics:', error)
     } finally {
       setLoading(false)
     }

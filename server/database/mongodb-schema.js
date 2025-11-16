@@ -69,6 +69,8 @@ export const NegotiationThreadSchema = {
   quoteId: { type: 'String', required: true, index: true },
   buyerId: { type: 'String', required: true, index: true },
   sellerId: { type: 'String', required: true, index: true },
+  buyerGuidelines: { type: 'String', default: null },
+  sellerGuidelines: { type: 'String', default: null },
   status: {
     type: 'String',
     enum: ['OPEN', 'CLOSED'],
@@ -85,7 +87,7 @@ export const ChatMessageSchema = {
   senderId: { type: 'String', default: null }, // null for AGENT messages
   senderType: {
     type: 'String',
-    enum: ['BUYER', 'SELLER', 'AGENT'],
+    enum: ['BUYER', 'SELLER', 'AGENT', 'AGENT_BUYER', 'AGENT_SELLER'],
     required: true
   },
   senderName: { type: 'String', required: true },

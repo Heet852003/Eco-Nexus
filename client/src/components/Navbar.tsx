@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
 import { motion } from 'framer-motion'
 import { Button } from './ui/button'
+import { logger } from '@/lib/logger'
 
 export default function Navbar() {
   const pathname = usePathname()
@@ -70,9 +71,7 @@ export default function Navbar() {
     if (!hasRoleCapability) {
       setChangingRole(true)
       try {
-        console.log(`Enabling ${newRole} role for user...`)
         const data = await updateRole(newRole) // This will enable the role
-        console.log('Role update response:', data)
         if (data?.user) {
           // Update local state immediately
           setActiveRole(newRole)
@@ -88,7 +87,7 @@ export default function Navbar() {
           toast.error('Failed to update role - no user data returned')
         }
       } catch (error: any) {
-        console.error('Role update error:', error)
+        logger.error('Role update error:', error)
         const errorMsg = error.response?.data?.error || error.message || `Failed to enable ${newRole} role`
         toast.error(errorMsg)
       } finally {

@@ -402,3 +402,24 @@ body {
   }
 }
 
+/* Light background animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+.pulse-glow-slow {
+  animation: pulse-glow 8s ease-in-out infinite;
+}
+
+.pulse-glow-slower {
+  animation: pulse-glow 12s ease-in-out infinite;
+  animation-delay: 2s;
+}
+

@@ -21,6 +21,8 @@ export class NegotiationThread {
       quoteId: data.quoteId,
       buyerId: data.buyerId,
       sellerId: data.sellerId,
+      buyerGuidelines: null,
+      sellerGuidelines: null,
       status: 'OPEN',
       createdAt: new Date(),
       updatedAt: new Date()
@@ -126,5 +128,36 @@ export class NegotiationThread {
     const collection = getCollection('negotiationThreads')
     const threads = await collection.find({}).sort({ createdAt: -1 }).toArray()
     return threads.map(t => ({ ...t, id: t._id.toString() }))
+  }
+
+  /**
+   * Update guidelines for buyer or seller
+   */
+  static async updateGuidelines(threadId, userId, guidelines) {
+    const collection = getCollection('negotiationThreads')
+    let query
+    try {
+      query = { _id: new ObjectId(threadId) }
+    } catch (error) {
+      query = { id: threadId }
+    }
+
+    const thread = await collection.findOne(query)
+    if (!thread) {
+      throw new Error('Thread not found')
+    }
+
+    const update = { updatedAt: new Date() }
+    if (thread.buyerId === userId) {
+      update.buyerGuidelines = guidelines
+    } else if (thread.sellerId === userId) {
+      update.sellerGuidelines = guidelines
+    } else {
+      throw new Error('User is not a participant in this thread')
+    }
+
+    await collection.updateOne(query, { $set: update })
+    const updated = await collection.findOne(query)
+    return { ...updated, id: updated._id.toString() }
   }
 }

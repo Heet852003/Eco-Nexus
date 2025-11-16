@@ -11,6 +11,7 @@ import { Leaf, Mail, Lock, User } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -41,7 +42,7 @@ export default function RegisterPage() {
         toast.error('Registration failed - invalid response')
       }
     } catch (error: any) {
-      console.error('Registration error:', error)
+      logger.error('Registration error:', error)
       const errorMessage = error?.response?.data?.error || error?.message || 'Registration failed'
       toast.error(errorMessage)
     } finally {

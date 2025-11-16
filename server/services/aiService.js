@@ -14,12 +14,23 @@ const LLM_MODEL = process.env.LLM_MODEL || 'meta-llama/llama-3.2-3b-instruct:fre
 /**
  * Call OpenRouter API
  */
-async function callLLM(messages, temperature = 0.7) {
+export async function callLLM(messages, temperature = 0.7) {
   try {
-    if (!OPENROUTER_API_KEY) {
-      throw new Error('OpenRouter API key not configured')
+    // Check if API key is configured
+    if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'your-openrouter-api-key' || OPENROUTER_API_KEY.trim() === '') {
+      const errorMsg = 'OpenRouter API key not configured. Please set OPENROUTER_API_KEY in your .env file. Get your key from https://openrouter.ai/keys'
+      console.error('❌', errorMsg)
+      throw new Error(errorMsg)
     }
-    
+
+    // Validate API key format (should start with 'sk-' for OpenRouter)
+    if (!OPENROUTER_API_KEY.startsWith('sk-') && !OPENROUTER_API_KEY.startsWith('sk-or-')) {
+      console.warn('⚠️ OpenRouter API key format may be incorrect. Keys usually start with "sk-or-"')
+    }
+
+    console.log(`🔑 Using OpenRouter API with model: ${LLM_MODEL}`)
+    console.log(`📝 Sending ${messages.length} messages to LLM...`)
+
     const response = await axios.post(
       OPENROUTER_API_URL,
       {
@@ -31,20 +42,58 @@ async function callLLM(messages, temperature = 0.7) {
         headers: {
           'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:3000',
-          'X-Title': 'Carbon Marketplace',
+          'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
+          'X-Title': 'Eco-Nexus Marketplace',
         },
+        timeout: 30000, // 30 second timeout
       }
     )
-    
-    if (!response.data.choices || response.data.choices.length === 0) {
-      throw new Error('No response from AI model')
+
+    if (!response.data) {
+      throw new Error('No data in API response')
     }
-    
-    return response.data.choices[0].message.content
+
+    if (!response.data.choices || response.data.choices.length === 0) {
+      throw new Error('No response from AI model - empty choices array')
+    }
+
+    const content = response.data.choices[0].message.content
+    if (!content || content.trim() === '') {
+      throw new Error('Empty response from AI model')
+    }
+
+    console.log(`✅ LLM response received (${content.length} chars)`)
+    return content
   } catch (error) {
-    console.error('LLM API Error:', error.response?.data || error.message)
-    throw new Error(`AI service error: ${error.response?.data?.error?.message || error.message}`)
+    // Enhanced error logging
+    if (error.response) {
+      // API returned an error response
+      const status = error.response.status
+      const errorData = error.response.data
+
+      console.error('❌ OpenRouter API Error Response:')
+      console.error(`   Status: ${status}`)
+      console.error(`   Error:`, errorData)
+
+      if (status === 401) {
+        throw new Error('OpenRouter API key is invalid or expired. Please check your OPENROUTER_API_KEY in .env file')
+      } else if (status === 429) {
+        throw new Error('OpenRouter API rate limit exceeded. Please wait a moment and try again, or upgrade your plan at https://openrouter.ai')
+      } else if (status === 400) {
+        throw new Error(`OpenRouter API request error: ${errorData?.error?.message || JSON.stringify(errorData)}`)
+      } else {
+        throw new Error(`OpenRouter API error (${status}): ${errorData?.error?.message || errorData?.message || 'Unknown error'}`)
+      }
+    } else if (error.request) {
+      // Request was made but no response received
+      console.error('❌ No response from OpenRouter API')
+      console.error('   Request timeout or network error')
+      throw new Error('Failed to connect to OpenRouter API. Check your internet connection and try again.')
+    } else {
+      // Error setting up the request
+      console.error('❌ Error setting up OpenRouter API request:', error.message)
+      throw error
+    }
   }
 }
 

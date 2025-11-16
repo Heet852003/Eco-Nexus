@@ -14,6 +14,7 @@ import { ArrowLeft, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
+import { logger } from '@/lib/logger'
 
 // Use PRODUCTS from constants - matches ML model training data
 const PRODUCTS_LIST = PRODUCTS
@@ -50,7 +51,7 @@ export default function NewRequestPage() {
       }
       toast.success('AI recommendation received!')
     } catch (error: any) {
-      console.error('AI recommendation error:', error)
+      logger.error('AI recommendation error:', error)
       toast.error(error.response?.data?.error || 'Failed to get AI recommendation. Please check your OpenRouter API key.')
     } finally {
       setGettingRecommendation(false)
