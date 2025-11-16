@@ -53,19 +53,51 @@ export async function createRequest(req, res) {
     })
 
     // Get AI recommendation and set suggested price
+    // IMPORTANT: This uses real-world product price ranges, NOT the user's maxPrice input
+    // ALWAYS generate AI recommendation - it's required for fair price display
+    let aiRecommendation = null
     try {
       // Use default carbon score of 7.0 for AI recommendation (not stored)
-      const aiRecommendation = await aiRecommendPrice(product, quantity, 7.0)
-      await BuyerRequest.setAIRecommendation(request.id, aiRecommendation)
-      request.aiRecommendation = aiRecommendation
+      aiRecommendation = await aiRecommendPrice(product, quantity, 7.0)
       
-      // Set AI suggested values
-      if (aiRecommendation && aiRecommendation.suggestedPrice) {
-        request.aiSuggestedPrice = aiRecommendation.suggestedPrice
+      // Ensure fairPrice and suggestedPrice are the same
+      const fairPrice = aiRecommendation.fairPrice || aiRecommendation.suggestedPrice
+      if (fairPrice) {
+        aiRecommendation.fairPrice = fairPrice
+        aiRecommendation.suggestedPrice = fairPrice
       }
+      
+      // Store in database
+      await BuyerRequest.setAIRecommendation(request.id, aiRecommendation)
+      
+      // Update request object for response
+      request.aiRecommendation = aiRecommendation
+      request.aiSuggestedPrice = fairPrice
+      
+      console.log(`✅ AI recommendation generated for request ${request.id}: Fair Price = $${fairPrice?.toFixed(2)}`)
     } catch (error) {
-      console.error('AI recommendation failed:', error)
-      // Continue without AI recommendation
+      console.error('❌ AI recommendation failed:', error)
+      // Even if AI fails, try to calculate fair price from product ranges
+      try {
+        const { calculateFairMarketPrice } = await import('../constants/productPrices.js')
+        const fallbackFairPrice = calculateFairMarketPrice(product.name, quantity)
+        if (fallbackFairPrice) {
+          aiRecommendation = {
+            fairPrice: fallbackFairPrice,
+            suggestedPrice: fallbackFairPrice,
+            recommendedCarbonRange: { min: 6, max: 8 },
+            marketJustification: `Based on real-world market data for ${product.name}`,
+            sustainabilityReasoning: 'Standard sustainability metrics applied',
+            confidence: 75
+          }
+          await BuyerRequest.setAIRecommendation(request.id, aiRecommendation)
+          request.aiRecommendation = aiRecommendation
+          request.aiSuggestedPrice = fallbackFairPrice
+          console.log(`⚠️ Using fallback fair price: $${fallbackFairPrice.toFixed(2)}`)
+        }
+      } catch (fallbackError) {
+        console.error('❌ Fallback fair price calculation also failed:', fallbackError)
+      }
     }
 
     res.status(201).json(request)

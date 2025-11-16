@@ -4,6 +4,7 @@
 
 import axios from 'axios'
 import dotenv from 'dotenv'
+import { calculateFairMarketPrice, getProductPriceRange } from '../constants/productPrices.js'
 
 dotenv.config()
 
@@ -116,74 +117,99 @@ function parseJSONResponse(text) {
 }
 
 /**
- * Price Recommendation using Aristotle Framework
+ * Price Recommendation using real-world product price ranges
+ * Uses product min/max values, NOT user inputs
  */
 export async function recommendPrice(product, quantity, desiredCarbonScore) {
-  const prompt = `You are the Buyer Agent using Aristotelian Reasoning (Logos, Ethos, Phronesis).
+  // Calculate fair price based on product price ranges (real-world values)
+  const productRange = getProductPriceRange(product.name)
+  let fairPrice = null
+  
+  console.log(`🔍 Getting recommendation for: ${product.name}, quantity: ${quantity}`)
+  console.log(`📊 Product range found:`, productRange)
+  
+  if (productRange) {
+    // Fair price is midpoint of product's min/max range, multiplied by quantity
+    fairPrice = ((productRange.min + productRange.max) / 2) * quantity
+    console.log(`✅ Calculated fair price from product range: $${fairPrice.toFixed(2)}`)
+  } else {
+    // Fallback: use basePrice if product not in our price ranges
+    console.warn(`⚠️ Product "${product.name}" not found in price ranges, using basePrice fallback`)
+    fairPrice = product.basePrice * quantity
+    console.log(`⚠️ Using fallback price: $${fairPrice.toFixed(2)} (basePrice: $${product.basePrice} × quantity: ${quantity})`)
+  }
+  
+  // Generate market justification based on real-world price range
+  let marketJustification = ''
+  let sustainabilityReasoning = ''
+  
+  if (productRange) {
+    marketJustification = `Based on real-world market data, ${product.name} typically ranges from $${productRange.min.toFixed(2)} to $${productRange.max.toFixed(2)} per unit. The fair market price of $${fairPrice.toFixed(2)} (for ${quantity} unit${quantity > 1 ? 's' : ''}) represents the midpoint of this range, reflecting current market conditions and typical pricing.`
+    sustainabilityReasoning = `This price recommendation is independent of any user-specified budget and is based solely on established market values for ${product.name}. It provides an objective baseline for fair negotiation.`
+  } else {
+    marketJustification = `Based on base price calculation for ${product.name}.`
+    sustainabilityReasoning = `Standard pricing applied for this product category.`
+  }
 
-Given:
-- Product: ${product.name}
-- Category: ${product.category}
-- Base Price: $${product.basePrice}
-- Quantity: ${quantity}
-- Desired Carbon Score: ${desiredCarbonScore}/10
-
-Using Aristotelian principles:
-1. LOGOS (Logical Analysis): Analyze market data, price trends, and economic factors
-2. ETHOS (Credibility): Consider product authenticity and seller reputation
-3. PHRONESIS (Practical Wisdom): Balance cost, sustainability, and value
-
-Provide your recommendation as JSON:
-{
-  "fairPrice": <number in USD>,
-  "recommendedCarbonRange": {
-    "min": <number 0-10>,
-    "max": <number 0-10>
-  },
-  "marketJustification": "<explanation>",
-  "sustainabilityReasoning": "<explanation>",
-  "confidence": <number 0-100>
-}`
-
-  const messages = [
-    {
-      role: 'system',
-      content: 'You are an expert carbon marketplace advisor using Aristotelian reasoning principles.'
-    },
-    {
-      role: 'user',
-      content: prompt
-    }
-  ]
-
+  // Try to get AI-generated reasoning, but always use the calculated fair price
   try {
+    const prompt = `You are providing market analysis for a product recommendation.
+
+Product: ${product.name}
+Category: ${product.category}
+Quantity: ${quantity}
+${productRange ? `Real-world price range: $${productRange.min.toFixed(2)} - $${productRange.max.toFixed(2)} per unit` : `Base price: $${product.basePrice} per unit`}
+Fair market price (calculated): $${fairPrice.toFixed(2)} for ${quantity} unit${quantity > 1 ? 's' : ''}
+Desired Carbon Score: ${desiredCarbonScore}/10
+
+IMPORTANT: The fair price of $${fairPrice.toFixed(2)} is already calculated and should NOT be changed. This is based on real-world market data.
+
+Provide additional market context and sustainability reasoning as JSON:
+{
+  "marketJustification": "<enhanced explanation of why this price is fair, based on market data>",
+  "sustainabilityReasoning": "<explanation of sustainability factors>",
+  "confidence": <number 0-100>
+}
+
+Do NOT include a fairPrice field - it's already set to $${fairPrice.toFixed(2)}.`
+
+    const messages = [
+      {
+        role: 'system',
+        content: 'You are an expert carbon marketplace advisor providing market analysis. You provide reasoning and justification, but the fair price is already calculated from real-world data.'
+      },
+      {
+        role: 'user',
+        content: prompt
+      }
+    ]
+
     const response = await callLLM(messages)
     const parsed = parseJSONResponse(response)
     
-    // Ensure numeric values
-    return {
-      fairPrice: parsed.fairPrice || product.basePrice,
-      recommendedCarbonRange: {
-        min: parsed.recommendedCarbonRange?.min || Math.max(0, desiredCarbonScore - 1),
-        max: parsed.recommendedCarbonRange?.max || Math.min(10, desiredCarbonScore + 1),
-      },
-      marketJustification: parsed.marketJustification || 'Based on market analysis',
-      sustainabilityReasoning: parsed.sustainabilityReasoning || 'Sustainability-focused recommendation',
-      confidence: parsed.confidence || 75,
+    // Use AI-generated reasoning if available, otherwise use our defaults
+    if (parsed.marketJustification) {
+      marketJustification = parsed.marketJustification
+    }
+    if (parsed.sustainabilityReasoning) {
+      sustainabilityReasoning = parsed.sustainabilityReasoning
     }
   } catch (error) {
-    console.error('AI recommendation error:', error)
-    // Return fallback recommendation if AI fails
-    return {
-      fairPrice: product.basePrice * quantity,
-      recommendedCarbonRange: {
-        min: Math.max(0, desiredCarbonScore - 1),
-        max: Math.min(10, desiredCarbonScore + 1),
-      },
-      marketJustification: 'Based on base price calculation (AI service unavailable)',
-      sustainabilityReasoning: 'Standard sustainability metrics applied',
-      confidence: 50,
-    }
+    console.error('AI reasoning generation failed, using defaults:', error)
+    // Continue with our calculated values
+  }
+  
+  // Always return the calculated fair price (based on product ranges, not user input)
+  return {
+    fairPrice: fairPrice,
+    suggestedPrice: fairPrice, // Same as fairPrice for consistency
+    recommendedCarbonRange: {
+      min: Math.max(0, desiredCarbonScore - 1),
+      max: Math.min(10, desiredCarbonScore + 1),
+    },
+    marketJustification: marketJustification,
+    sustainabilityReasoning: sustainabilityReasoning,
+    confidence: 85, // High confidence since it's based on real market data
   }
 }
 

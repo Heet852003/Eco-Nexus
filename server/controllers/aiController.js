@@ -8,18 +8,19 @@ import { SellerQuote } from '../models/SellerQuote.js'
 import { ChatMessage } from '../models/ChatMessage.js'
 import { Transaction } from '../models/Transaction.js'
 
-// Products list
+// Products list - MUST match buyerController.js products
+// These are the actual products with real-world price ranges
 const PRODUCTS = [
-  { id: 'prod-1', name: 'Renewable Energy Credits (REC)', category: 'Energy', basePrice: 50, avgCarbonScore: 8.5 },
-  { id: 'prod-2', name: 'Carbon Offset Credits', category: 'Offset', basePrice: 25, avgCarbonScore: 7.0 },
-  { id: 'prod-3', name: 'Forest Conservation Credits', category: 'Nature', basePrice: 75, avgCarbonScore: 9.0 },
-  { id: 'prod-4', name: 'Ocean Carbon Credits', category: 'Nature', basePrice: 60, avgCarbonScore: 8.0 },
-  { id: 'prod-5', name: 'Industrial Carbon Capture', category: 'Technology', basePrice: 100, avgCarbonScore: 7.5 },
-  { id: 'prod-6', name: 'Agricultural Carbon Credits', category: 'Agriculture', basePrice: 40, avgCarbonScore: 6.5 },
-  { id: 'prod-7', name: 'Waste-to-Energy Credits', category: 'Waste', basePrice: 35, avgCarbonScore: 6.0 },
-  { id: 'prod-8', name: 'Transportation Efficiency Credits', category: 'Transport', basePrice: 45, avgCarbonScore: 7.5 },
-  { id: 'prod-9', name: 'Building Efficiency Credits', category: 'Construction', basePrice: 55, avgCarbonScore: 8.0 },
-  { id: 'prod-10', name: 'Water Conservation Credits', category: 'Water', basePrice: 30, avgCarbonScore: 7.0 },
+  { id: 'prod-1', name: 'Ballpoint Pen', category: 'Office Supplies', basePrice: 2, avgCarbonScore: 6.5 },
+  { id: 'prod-2', name: 'Binder Clips', category: 'Office Supplies', basePrice: 5, avgCarbonScore: 7.0 },
+  { id: 'prod-3', name: 'Keyboard', category: 'Electronics', basePrice: 50, avgCarbonScore: 5.5 },
+  { id: 'prod-4', name: 'Webcam', category: 'Electronics', basePrice: 40, avgCarbonScore: 5.0 },
+  { id: 'prod-5', name: 'Coffee Mug', category: 'Kitchenware', basePrice: 8, avgCarbonScore: 7.5 },
+  { id: 'prod-6', name: 'Cutlery Set', category: 'Kitchenware', basePrice: 25, avgCarbonScore: 6.0 },
+  { id: 'prod-7', name: 'Cardboard', category: 'Packaging', basePrice: 3, avgCarbonScore: 8.0 },
+  { id: 'prod-8', name: 'Paper', category: 'Office Supplies', basePrice: 4, avgCarbonScore: 6.5 },
+  { id: 'prod-9', name: 'Stapler', category: 'Office Supplies', basePrice: 12, avgCarbonScore: 6.0 },
+  { id: 'prod-10', name: 'Paper Shredder', category: 'Office Equipment', basePrice: 80, avgCarbonScore: 4.5 },
 ]
 
 export async function recommendPrice(req, res) {

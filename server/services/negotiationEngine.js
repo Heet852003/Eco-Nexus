@@ -3,20 +3,43 @@
  * Implements human-like negotiation with fair bargaining, reasoning, and settlements
  */
 
+import { calculateFairMarketPrice, getProductPriceRange } from '../constants/productPrices.js'
+
 /**
  * Analyze negotiation position and generate reasoning
  */
 export function analyzeNegotiationPosition(agentType, request, quote, chatHistory, competingQuotes, guidelines = {}) {
   const isBuyer = agentType === 'BUYER'
   
-  // Calculate fair price range
+  // Get product price range from constants
+  const productRange = getProductPriceRange(request.productName)
+  
+  // Calculate fair market price based on product min/max (consistent, doesn't change)
+  let fairMarketPrice = null
+  if (productRange) {
+    // Fair price is midpoint of product's min/max range, multiplied by quantity
+    fairMarketPrice = ((productRange.min + productRange.max) / 2) * request.quantity
+  } else {
+    // Fallback: use midpoint between budget and original quote if product not found
+    const maxBudget = request.maxPrice
+    const originalPrice = quote.sellerPrice
+    fairMarketPrice = (maxBudget + originalPrice) / 2
+  }
+  
+  // Calculate acceptable price ranges based on product min/max
   const originalPrice = quote.sellerPrice
   const maxBudget = request.maxPrice
-  const minAcceptablePrice = maxBudget * 0.6 // Buyer won't go below 60% of budget
-  const maxAcceptablePrice = originalPrice * 1.2 // Seller won't go above 20% of original
   
-  // Fair market price (midpoint of reasonable range)
-  const fairMarketPrice = (minAcceptablePrice + maxAcceptablePrice) / 2
+  // Buyer's acceptable range: from product min to max budget (or product max if lower)
+  const productMinPrice = productRange ? productRange.min * request.quantity : maxBudget * 0.5
+  const productMaxPrice = productRange ? productRange.max * request.quantity : maxBudget
+  const minAcceptablePrice = Math.max(productMinPrice, maxBudget * 0.5) // At least 50% of budget
+  const maxAcceptablePrice = Math.min(productMaxPrice, maxBudget) // Not more than budget or product max
+  
+  // Seller's acceptable range: from product min (their minimum) to original quote (their maximum)
+  // Seller should move DOWN from original quote, not UP
+  const sellerMinPrice = productRange ? productRange.min * request.quantity : originalPrice * 0.7 // Won't go below 70% of original
+  const sellerMaxPrice = originalPrice // Original quote is their starting point (maximum)
   
   // Extract previous offers from chat history
   const previousOffers = extractOffers(chatHistory, agentType)
@@ -43,16 +66,19 @@ export function analyzeNegotiationPosition(agentType, request, quote, chatHistor
     agentType,
     originalPrice,
     maxBudget,
-    minAcceptablePrice,
-    maxAcceptablePrice,
-    fairMarketPrice,
+    minAcceptablePrice, // Buyer's minimum
+    maxAcceptablePrice, // Buyer's maximum (budget)
+    sellerMinPrice, // Seller's minimum (won't go below)
+    sellerMaxPrice, // Seller's maximum (original quote)
+    fairMarketPrice, // This is now consistent based on product min/max
     lastOffer,
     otherPartyLastOffer,
     progress,
     leverage,
     strategy,
     previousOffers,
-    guidelines: guidelines.user || null
+    guidelines: guidelines.user || null,
+    productRange // Include for reference
   }
 }
 

@@ -717,7 +717,16 @@ async function generateAgentMessage(threadId, agentType, userId, request, quote,
     // Build price context - make it very clear what offers have been made
     let priceContext = '\n=== PRICE HISTORY ===\n'
     priceContext += `Original quote: $${analysis.originalPrice.toFixed(2)}\n`
-    priceContext += `Fair market price (estimated): $${analysis.fairMarketPrice.toFixed(2)}\n`
+    priceContext += `Fair market price (based on product range): $${analysis.fairMarketPrice.toFixed(2)}\n`
+    priceContext += `Product price range: $${analysis.productRange ? `${(analysis.productRange.min * request.quantity).toFixed(2)} - $${(analysis.productRange.max * request.quantity).toFixed(2)}` : 'N/A'}\n`
+    
+    if (isBuyer) {
+      priceContext += `Your budget: $${request.maxPrice.toFixed(2)}\n`
+      priceContext += `Your acceptable range: $${analysis.minAcceptablePrice.toFixed(2)} - $${analysis.maxAcceptablePrice.toFixed(2)}\n`
+    } else {
+      priceContext += `Your acceptable range: $${analysis.sellerMinPrice.toFixed(2)} - $${analysis.sellerMaxPrice.toFixed(2)} (you start high and move DOWN)\n`
+    }
+    
     if (analysis.lastOffer) {
       priceContext += `Your last offer: $${analysis.lastOffer.price.toFixed(2)}\n`
     } else {
@@ -727,7 +736,7 @@ async function generateAgentMessage(threadId, agentType, userId, request, quote,
       priceContext += `Their last offer: $${analysis.otherPartyLastOffer.price.toFixed(2)}\n`
       const priceDiff = analysis.lastOffer 
         ? Math.abs(analysis.lastOffer.price - analysis.otherPartyLastOffer.price)
-        : Math.abs(analysis.originalPrice - analysis.otherPartyLastOffer.price)
+        : Math.abs((isBuyer ? analysis.originalPrice : analysis.maxAcceptablePrice) - analysis.otherPartyLastOffer.price)
       priceContext += `Price difference: $${priceDiff.toFixed(2)}\n`
     } else {
       priceContext += `Their last offer: None yet\n`
@@ -736,7 +745,11 @@ async function generateAgentMessage(threadId, agentType, userId, request, quote,
     
     // Add suggested offer prominently
     priceContext += `\n💡 SUGGESTED OFFER FOR YOU: $${suggestedOffer.toFixed(2)}\n`
-    priceContext += `This is a reasonable offer based on the fair market price and negotiation progress.\n`
+    if (isBuyer) {
+      priceContext += `This is a reasonable offer moving UP toward the fair market price.\n`
+    } else {
+      priceContext += `This is a reasonable offer moving DOWN from your original quote toward the fair market price.\n`
+    }
     
     // Build leverage context
     let leverageContext = ''
@@ -753,8 +766,8 @@ async function generateAgentMessage(threadId, agentType, userId, request, quote,
 
 YOUR ROLE:
 ${isBuyer 
-  ? `You are the BUYER. Your goal is to get the best value while being fair and reasonable. Your maximum budget is $${request.maxPrice.toFixed(2)}. You should negotiate for a fair price that respects both parties' interests.`
-  : `You are the SELLER. Your goal is to get fair compensation for your product while being reasonable. Your original quote was $${quote.sellerPrice.toFixed(2)}. You should negotiate for a fair price that reflects the value you provide.`
+  ? `You are the BUYER. Your goal is to get the best value while being fair and reasonable. Your maximum budget is $${request.maxPrice.toFixed(2)}. You start with a lower offer and move UP (increase) toward the fair market price during negotiation.`
+  : `You are the SELLER. Your goal is to get fair compensation for your product while being reasonable. Your original quote was $${quote.sellerPrice.toFixed(2)}. You start at this price and move DOWN (decrease) toward the fair market price during negotiation. This is how real negotiations work - sellers reduce their price, not increase it.`
 }
 
 DEAL DETAILS:
@@ -789,8 +802,11 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
 3. You MUST NOT repeat your previous messages. If you've said something similar before, say something DIFFERENT now.
 4. Acknowledge what the other party said: "I see you offered $X" or "Thank you for your offer of $X"
 5. Make your counter-offer: "I can offer $${suggestedOffer.toFixed(2)}" or "How about $${suggestedOffer.toFixed(2)}?"
-6. Provide a brief justification: "This is fair because..." or "This works because..."
-7. Be conversational and human-like, not robotic.
+6. ${isBuyer 
+  ? 'As the BUYER, you should move UP (increase) your offer from your last one. You start low and increase toward fair price.'
+  : 'As the SELLER, you MUST move DOWN (decrease) your price from your last one. You start at your original quote and decrease toward fair price. This is how real negotiations work - sellers reduce prices, not increase them.'}
+7. Provide a brief justification: "This is fair because..." or "This works because..."
+8. Be conversational and human-like, not robotic.
 
 ${repetitionWarning}
 
@@ -810,7 +826,7 @@ Write your negotiation message now (3-5 sentences, be specific with numbers):`
     const messages = [
       {
         role: 'system',
-        content: `You are ${userName}, a professional ${isBuyer ? 'buyer' : 'seller'} in a business negotiation. You are fair, reasonable, and strategic. You negotiate like a real human would - with reasoning, justification, and respect for the other party. You aim for win-win outcomes.`
+        content: `You are ${userName}, a professional ${isBuyer ? 'buyer' : 'seller'} in a business negotiation. You are fair, reasonable, and strategic. You negotiate like a real human would - with reasoning, justification, and respect for the other party. You aim for win-win outcomes. ${isBuyer ? 'As a buyer, you start with a lower offer and increase it during negotiation.' : 'As a seller, you start with your original quote and decrease your price during negotiation. This is how real negotiations work - sellers reduce prices to reach agreement.'}`
       },
       {
         role: 'user',
@@ -896,42 +912,64 @@ Write your negotiation message now (3-5 sentences, be specific with numbers):`
 
 /**
  * Calculate a reasonable offer based on negotiation analysis
+ * CRITICAL: Sellers move DOWN (decrease), Buyers move UP (increase) - they converge toward fair price
  */
 function calculateReasonableOffer(analysis, isBuyer) {
-  const { fairMarketPrice, minAcceptablePrice, maxAcceptablePrice, lastOffer, otherPartyLastOffer, progress } = analysis
+  const { 
+    fairMarketPrice, 
+    minAcceptablePrice, // Buyer's min
+    maxAcceptablePrice, // Buyer's max (budget)
+    sellerMinPrice, // Seller's min (won't go below)
+    sellerMaxPrice, // Seller's max (original quote)
+    lastOffer, 
+    otherPartyLastOffer, 
+    progress 
+  } = analysis
   
-  // If we're near settlement, move toward fair price
+  // Define price bounds based on agent type
+  const myMinPrice = isBuyer ? minAcceptablePrice : sellerMinPrice
+  const myMaxPrice = isBuyer ? maxAcceptablePrice : sellerMaxPrice
+  
+  // If we're near settlement, move toward fair price or their offer
   if (progress.stage === 'near_settlement') {
     if (otherPartyLastOffer) {
-      // Move slightly toward their offer but stay reasonable
-      const myLastPrice = lastOffer?.price || (isBuyer ? maxAcceptablePrice : minAcceptablePrice)
+      // Move toward their offer but stay within bounds
+      const myLastPrice = lastOffer?.price || (isBuyer ? myMaxPrice * 0.7 : myMaxPrice)
       const theirPrice = otherPartyLastOffer.price
       const midpoint = (myLastPrice + theirPrice) / 2
-      return Math.max(minAcceptablePrice, Math.min(maxAcceptablePrice, midpoint))
+      return Math.max(myMinPrice, Math.min(myMaxPrice, midpoint))
     }
-    return fairMarketPrice
+    return Math.max(myMinPrice, Math.min(myMaxPrice, fairMarketPrice))
   }
   
   // If we have a last offer, make a reasonable move from it
   if (lastOffer) {
-    const moveAmount = isBuyer 
-      ? Math.min(50, (lastOffer.price - minAcceptablePrice) * 0.1) // Move down 10% or $50 max
-      : Math.min(50, (maxAcceptablePrice - lastOffer.price) * 0.1) // Move up 10% or $50 max
-    
-    const newOffer = isBuyer 
-      ? Math.max(minAcceptablePrice, lastOffer.price - moveAmount)
-      : Math.min(maxAcceptablePrice, lastOffer.price + moveAmount)
-    
-    return newOffer
+    if (isBuyer) {
+      // BUYER: Move UP (increase offer) toward fair price
+      const moveAmount = Math.min(50, (fairMarketPrice - lastOffer.price) * 0.15) // Move 15% toward fair or $50 max
+      const newOffer = Math.min(myMaxPrice, lastOffer.price + moveAmount)
+      // Don't go below our minimum
+      return Math.max(myMinPrice, newOffer)
+    } else {
+      // SELLER: Move DOWN (decrease price) toward fair price
+      const moveAmount = Math.min(50, (lastOffer.price - fairMarketPrice) * 0.15) // Move 15% toward fair or $50 max
+      const newOffer = Math.max(myMinPrice, lastOffer.price - moveAmount)
+      // Don't go below our minimum
+      return Math.max(myMinPrice, newOffer)
+    }
   }
   
   // Initial offer: start reasonable but with room to negotiate
   if (isBuyer) {
-    // Start at 80% of fair price or 70% of original, whichever is higher
-    return Math.max(minAcceptablePrice, Math.min(fairMarketPrice * 0.8, analysis.originalPrice * 0.7))
+    // Buyer starts low (70% of fair price or 60% of original, whichever is higher)
+    const startPrice = Math.max(
+      myMinPrice, 
+      Math.min(fairMarketPrice * 0.7, analysis.originalPrice * 0.6)
+    )
+    return startPrice
   } else {
-    // Start at 120% of fair price or 110% of original, whichever is lower
-    return Math.min(maxAcceptablePrice, Math.max(fairMarketPrice * 1.2, analysis.originalPrice * 1.1))
+    // Seller starts at original quote (their maximum) - will move DOWN from here
+    return Math.min(myMaxPrice, analysis.originalPrice)
   }
 }
 

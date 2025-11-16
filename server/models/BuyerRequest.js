@@ -43,6 +43,16 @@ export class BuyerRequest {
 
     const request = await collection.findOne(query)
     if (!request) return null
+
+    // Ensure aiRecommendation has consistent fairPrice
+    if (request.aiRecommendation) {
+      const fairPrice = request.aiRecommendation.fairPrice || request.aiRecommendation.suggestedPrice || request.aiSuggestedPrice
+      if (fairPrice) {
+        request.aiRecommendation.fairPrice = fairPrice
+        request.aiRecommendation.suggestedPrice = fairPrice
+      }
+    }
+
     return { ...request, id: request._id.toString() }
   }
 
@@ -52,7 +62,17 @@ export class BuyerRequest {
   static async findByBuyerId(buyerId) {
     const collection = getCollection('buyerRequests')
     const requests = await collection.find({ buyerId }).sort({ createdAt: -1 }).toArray()
-    return requests.map(r => ({ ...r, id: r._id.toString() }))
+    return requests.map(r => {
+      // Ensure aiRecommendation has consistent fairPrice
+      if (r.aiRecommendation) {
+        const fairPrice = r.aiRecommendation.fairPrice || r.aiRecommendation.suggestedPrice || r.aiSuggestedPrice
+        if (fairPrice) {
+          r.aiRecommendation.fairPrice = fairPrice
+          r.aiRecommendation.suggestedPrice = fairPrice
+        }
+      }
+      return { ...r, id: r._id.toString() }
+    })
   }
 
   /**
@@ -138,15 +158,22 @@ export class BuyerRequest {
       query = { id: id }
     }
 
+    // Ensure fairPrice and suggestedPrice are consistent
+    const fairPrice = recommendation?.fairPrice || recommendation?.suggestedPrice
+    
     const update = {
       $set: {
-        aiRecommendation: recommendation,
+        aiRecommendation: {
+          ...recommendation,
+          fairPrice: fairPrice, // Ensure fairPrice is always set
+          suggestedPrice: fairPrice // Ensure suggestedPrice matches fairPrice
+        },
         updatedAt: new Date()
       }
     }
 
-    if (recommendation?.suggestedPrice) {
-      update.$set.aiSuggestedPrice = recommendation.suggestedPrice
+    if (fairPrice) {
+      update.$set.aiSuggestedPrice = fairPrice
     }
 
     await collection.updateOne(query, update)
