@@ -60,10 +60,21 @@ export default function NewRequestPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate required fields
+    if (!formData.productId || !formData.quantity || !formData.maxPrice) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+    
     setLoading(true)
 
     try {
-      const request = await createBuyerRequest(formData)
+      const request = await createBuyerRequest({
+        productId: formData.productId,
+        quantity: formData.quantity,
+        maxPrice: formData.maxPrice // Now guaranteed to be a number
+      })
       toast.success('Request created successfully!')
       router.push(`/buyer/request/${request.id}`)
     } catch (error: any) {
