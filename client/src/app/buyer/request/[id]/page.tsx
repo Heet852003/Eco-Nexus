@@ -39,7 +39,7 @@ export default function RequestDetailPage() {
       setEditForm({
         quantity: data.quantity,
         maxPrice: data.maxPrice || 0,
-        notes: data.notes || ''
+        notes: (data as any).notes || ''
       })
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to load request')
