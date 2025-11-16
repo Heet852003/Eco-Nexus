@@ -75,22 +75,36 @@ export async function getThread(req, res) {
   try {
     const { threadId } = req.params
     
+    console.log('📋 getThread called with threadId:', threadId)
+    
     if (!req.user || !req.user.id) {
+      console.error('❌ No user in request')
       return res.status(401).json({ error: 'Authentication required' })
     }
     
     const userId = req.user.id
+    console.log('👤 User ID:', userId)
 
     if (!threadId) {
       return res.status(400).json({ error: 'Thread ID is required' })
     }
 
     // Try to find thread by ID first
-    let thread = await NegotiationThread.findById(threadId)
+    let thread = null
+    try {
+      thread = await NegotiationThread.findById(threadId)
+    } catch (findError) {
+      console.error('Error finding thread by ID:', findError)
+      // Continue to try by quoteId
+    }
     
     // If not found by ID, try to find by quoteId
     if (!thread) {
-      thread = await NegotiationThread.findByQuoteId(threadId)
+      try {
+        thread = await NegotiationThread.findByQuoteId(threadId)
+      } catch (quoteError) {
+        console.error('Error finding thread by quoteId:', quoteError)
+      }
     }
 
     if (!thread) {
@@ -102,6 +116,12 @@ export async function getThread(req, res) {
       thread.id = thread._id ? thread._id.toString() : threadId
     }
 
+    // Verify thread has required fields
+    if (!thread.buyerId || !thread.sellerId) {
+      console.error('Thread missing required fields:', { buyerId: thread.buyerId, sellerId: thread.sellerId })
+      return res.status(500).json({ error: 'Thread data is incomplete' })
+    }
+
     // Verify user is participant
     if (thread.buyerId !== userId && thread.sellerId !== userId) {
       return res.status(403).json({ error: 'Access denied' })
@@ -109,20 +129,27 @@ export async function getThread(req, res) {
 
     // Get messages - use thread.id or threadId as fallback
     const messagesThreadId = thread.id || threadId
-    const messages = await ChatMessage.findByThreadId(messagesThreadId)
+    let messages = []
+    try {
+      messages = await ChatMessage.findByThreadId(messagesThreadId)
+    } catch (msgError) {
+      console.error('Error fetching messages:', msgError)
+      // Continue with empty messages array if there's an error
+      messages = []
+    }
 
     // Clean up thread object - remove _id if present, ensure id is set
     const cleanThread = {
-      id: thread.id,
-      requestId: thread.requestId,
-      quoteId: thread.quoteId,
-      buyerId: thread.buyerId,
-      sellerId: thread.sellerId,
+      id: thread.id || threadId,
+      requestId: thread.requestId || null,
+      quoteId: thread.quoteId || null,
+      buyerId: thread.buyerId || null,
+      sellerId: thread.sellerId || null,
       buyerGuidelines: thread.buyerGuidelines || null,
       sellerGuidelines: thread.sellerGuidelines || null,
       status: thread.status || 'OPEN',
-      createdAt: thread.createdAt,
-      updatedAt: thread.updatedAt
+      createdAt: thread.createdAt || new Date(),
+      updatedAt: thread.updatedAt || new Date()
     }
 
     res.json({
