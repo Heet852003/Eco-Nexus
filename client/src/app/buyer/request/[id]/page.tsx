@@ -250,7 +250,7 @@ export default function RequestDetailPage() {
                         <DollarSign className="w-4 h-4 text-gray-400" />
                         <div>
                           <p className="text-xs text-gray-400">Price</p>
-                          <p className="text-white font-semibold">${quote.price || quote.sellerPrice || 'N/A'}</p>
+                          <p className="text-white font-semibold">${quote.price || 'N/A'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
