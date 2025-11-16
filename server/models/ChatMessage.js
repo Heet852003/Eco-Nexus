@@ -11,14 +11,20 @@ export class ChatMessage {
    */
   static async create(data) {
     // Validate senderType
-    if (!['BUYER', 'SELLER', 'AGENT'].includes(data.senderType)) {
-      throw new Error('Invalid senderType. Must be BUYER, SELLER, or AGENT')
+    const validTypes = ['BUYER', 'SELLER', 'AGENT', 'AGENT_BUYER', 'AGENT_SELLER']
+    if (!validTypes.includes(data.senderType)) {
+      throw new Error(`Invalid senderType. Must be one of: ${validTypes.join(', ')}`)
     }
 
     const collection = getCollection('chatMessages')
+    // Agent messages (AGENT, AGENT_BUYER, AGENT_SELLER) have no senderId
+    const isAgentType = data.senderType === 'AGENT' || 
+                       data.senderType === 'AGENT_BUYER' || 
+                       data.senderType === 'AGENT_SELLER'
+    
     const message = {
       threadId: data.threadId,
-      senderId: data.senderType === 'AGENT' ? null : data.senderId,
+      senderId: isAgentType ? null : data.senderId,
       senderType: data.senderType,
       senderName: data.senderName,
       content: data.content,

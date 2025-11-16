@@ -189,6 +189,21 @@ export async function getNegotiationMessages(threadId: string) {
   return response.data?.messages || []
 }
 
+export async function triggerAgentNegotiation(threadId: string) {
+  const response = await api.post('/api/negotiation/agent-negotiate', { threadId })
+  return response.data
+}
+
+export async function updateNegotiationGuidelines(threadId: string, guidelines: string) {
+  const response = await api.post('/api/negotiation/guidelines', { threadId, guidelines })
+  return response.data
+}
+
+export async function extractNegotiatedTerms(threadId: string) {
+  const response = await api.post('/api/negotiation/extract-terms', { threadId })
+  return response.data
+}
+
 export async function getUserNegotiationThreads() {
   const response = await api.get('/api/negotiation/user-threads')
   return response.data
