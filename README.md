@@ -1,144 +1,170 @@
-# Eco-Nexus: Sustainable Choice Operating System (SCOS)
+# Carbon Marketplace MVP - Full Implementation
 
-A hackathon project that helps businesses make automated sustainable decisions by comparing vendors for cost, carbon footprint, delivery time, and sustainability score using multi-agent negotiation.
+A complete Carbon Credit Buy-Sell Marketplace with AI negotiation, blockchain settlement, and analytics.
 
-## 🚀 Features
-
-- **Multi-Agent Negotiation**: Buyer Agent negotiates with multiple Seller Agents
-- **Vendor Comparison**: Compare vendors on cost, carbon footprint, delivery time, and sustainability
-- **Blockchain Rewards**: Earn SCC tokens on Solana Devnet for green choices
-- **Analytics Dashboard**: Track carbon saved, cost saved, and tokens earned via Snowflake
-- **Modern UI**: Visa Marketplace-inspired dark-themed interface
-
-## 🛠️ Tech Stack
-
-- **Frontend**: Next.js 14 + React + TailwindCSS
-- **Backend**: Node.js + Express
-- **LLM**: OpenRouter (free tier)
-- **Blockchain**: Solana Devnet + SPL Tokens
-- **Analytics**: Snowflake (trial account)
-- **Hosting**: Vercel (frontend), Render/localhost (backend)
-
-## 📁 Project Structure
+## 🏗️ Project Structure
 
 ```
-eco-nexus/
-├── frontend/          # Next.js application
-├── backend/           # Express API server
-├── agents/            # Multi-agent negotiation logic
-├── data/              # Mock vendor data
-└── README.md          # This file
+├── client/              # Next.js Frontend
+│   ├── src/
+│   │   ├── app/         # Next.js App Router pages
+│   │   ├── components/  # React components
+│   │   ├── hooks/       # Custom React hooks
+│   │   └── lib/         # Utilities and API client
+│   └── package.json
+│
+├── server/              # Express Backend
+│   ├── controllers/     # Route controllers
+│   ├── routes/         # API routes
+│   ├── models/         # Data models
+│   ├── services/       # Business logic services
+│   ├── middleware/     # Express middleware
+│   └── server.js       # Main server file
+│
+└── shared/              # Shared code
+    ├── types/          # TypeScript types
+    └── constants/      # Shared constants
 ```
 
-## 🚦 Quick Start
+## 🚀 Quick Start
 
-### Prerequisites
-
-- Node.js 18+ and npm
-- Solana CLI (for token operations)
-- Snowflake trial account (optional for full functionality)
-
-### Installation
-
-1. **Clone and install dependencies:**
+### Backend Setup
 
 ```bash
-# Install frontend dependencies
-cd frontend
+cd server
 npm install
-
-# Install backend dependencies
-cd ../backend
-npm install
-```
-
-2. **Set up environment variables:**
-
-See [CREATE_ENV_FILES.md](./CREATE_ENV_FILES.md) for detailed instructions.
-
-**Quick setup:**
-```bash
-# Backend
-cd backend
 cp env.template .env
-# Edit .env and add your OPENROUTER_API_KEY
-
-# Frontend
-cd frontend
-cp env.local.template .env.local
-# Edit .env.local and set NEXT_PUBLIC_API_URL
+# Edit .env with your credentials
+npm run dev
 ```
 
-**Minimum required:**
-- `backend/.env`: `OPENROUTER_API_KEY` (get free at https://openrouter.ai)
-- `frontend/.env.local`: `NEXT_PUBLIC_API_URL=http://localhost:3001`
-
-For complete environment variable documentation, see [ENV_SETUP.md](./ENV_SETUP.md).
-
-3. **Run the application:**
+### Frontend Setup
 
 ```bash
-# Terminal 1: Start backend
-cd backend
-npm run dev
-
-# Terminal 2: Start frontend
-cd frontend
+cd client
+npm install
+cp env.local.template .env.local
+# Edit .env.local with API URL
 npm run dev
 ```
 
-4. **Access the application:**
+## 📋 Features Implemented
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:3001
+### ✅ Backend
+- [x] JWT Authentication (register/login)
+- [x] Buyer request creation and management
+- [x] Seller quote submission
+- [x] AI price recommendation (OpenRouter + Aristotle Framework)
+- [x] AI seller ranking
+- [x] Real-time chat with Socket.io
+- [x] Solana blockchain transaction commitment
+- [x] SCC token minting
+- [x] Snowflake analytics integration
+- [x] Scoring systems (reliability, match score)
 
-## 🎯 Usage
+### ✅ Frontend
+- [x] Login/Register pages
+- [x] Dashboard
+- [x] Authentication hooks
+- [x] Socket.io integration
+- [x] API client with interceptors
+- [x] Navbar component
+- [x] Responsive design with TailwindCSS
 
-1. **Browse Vendors**: View available vendors on the marketplace page
-2. **Compare & Negotiate**: Click "Compare & Negotiate" to trigger multi-agent negotiation
-3. **View Results**: See the winning vendor, savings, and SCC tokens earned
-4. **Analytics Dashboard**: Track your sustainability impact over time
+### 🔄 To Complete
+- [ ] Buyer new request page
+- [ ] Buyer requests list page
+- [ ] Seller requests page
+- [ ] Transaction detail page with chat
+- [ ] Analytics page with charts
+- [ ] Product selector component
+- [ ] Quote cards and tables
+- [ ] Blockchain receipt UI
 
-## 🔑 Free Services Setup
+## 🔑 Environment Variables
 
-### OpenRouter (LLM)
-1. Sign up at https://openrouter.ai
-2. Get your free API key
-3. Add to backend `.env` as `OPENROUTER_API_KEY`
+### Backend (.env)
+```
+PORT=3001
+JWT_SECRET=your-secret-key
+OPENROUTER_API_KEY=your-key
+SOLANA_RPC_URL=https://api.devnet.solana.com
+SNOWFLAKE_ACCOUNT=your-account
+SNOWFLAKE_USER=your-user
+SNOWFLAKE_PASSWORD=your-password
+CORS_ORIGINS=http://localhost:3000
+```
 
-### Solana Devnet
-- Free to use, no account needed
-- Use RPC: `https://api.devnet.solana.com`
+### Frontend (.env.local)
+```
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
 
-### Snowflake Trial
-1. Sign up for free trial at https://snowflake.com
-2. Create database `ECO_NEXUS` and schema `PUBLIC`
-3. Run SQL scripts in `backend/snowflake/schema.sql`
+## 📡 API Endpoints
 
-## 📊 API Endpoints
+### Auth
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
 
-- `GET /api/vendors/list` - List all vendors
-- `POST /api/agents/negotiate` - Trigger negotiation
-- `GET /api/recommendation` - Get final recommendation
-- `POST /api/solana/reward` - Mint SCC tokens
-- `GET /api/analytics/report` - Get analytics from Snowflake
+### Buyer
+- `POST /api/buyer/request` - Create buyer request
+- `GET /api/buyer/requests` - Get buyer's requests
+- `GET /api/buyer/request/:id` - Get request details
+- `POST /api/buyer/accept-quote` - Accept a quote
 
-## 🏆 Hackathon Notes
+### Seller
+- `GET /api/seller/requests` - Get available requests
+- `POST /api/seller/quote` - Submit quote
 
-- All services use free tiers/devnets
-- Mock vendor data included for demo
-- Fully functional in <48 hours
-- Modern, dark-themed UI optimized for presentation
+### Chat
+- `POST /api/chat/send` - Send message
+- `GET /api/chat/:id` - Get messages
 
-## 📝 License
+### AI
+- `POST /api/ai/recommend-price` - Get price recommendation
+- `POST /api/ai/rank-sellers` - Rank sellers
+- `POST /api/ai/negotiation-hints` - Get negotiation hints
 
-MIT License - Hackathon Project
+### Blockchain
+- `POST /api/blockchain/commit` - Commit transaction
+
+### Analytics
+- `POST /api/analytics/carbon` - Get carbon analytics
+- `GET /api/analytics/dashboard` - Get dashboard data
+
+## 🧠 AI Services
+
+Uses OpenRouter API with Meta Llama 3.2 3B Instruct model and custom Aristotle Framework:
+- **Logos**: Logical price analysis
+- **Ethos**: Credibility assessment
+- **Phronesis**: Practical wisdom for recommendations
+
+## 🔗 Blockchain
+
+- Solana Devnet integration
+- Transaction commitment
+- SCC (Sustainable Choice Coin) token minting
+- Transaction signatures stored
+
+## 📊 Analytics
+
+- Snowflake integration for:
+  - Carbon savings tracking
+  - Transaction history
+  - Seller ratings
+  - Daily summaries
 
 ## 🎯 Next Steps
 
-Ready to get started? Check out:
-- **[NEXT_STEPS.md](./NEXT_STEPS.md)** - Complete guide to get running
-- **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** - How to test all features
-- **[QUICKSTART.md](./QUICKSTART.md)** - 5-minute quick start
-- **[HACKATHON_NOTES.md](./HACKATHON_NOTES.md)** - Presentation tips
+1. Complete remaining frontend pages
+2. Add error boundaries
+3. Implement loading states
+4. Add toast notifications
+5. Create Snowflake schema SQL
+6. Add unit tests
+7. Deploy to production
+
+## 📝 License
+
+MIT License
 
