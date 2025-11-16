@@ -10,7 +10,7 @@ import Navbar from '@/components/Navbar'
 import { useAuth } from '@/hooks/useAuth'
 import { getBuyerRequests } from '@/lib/api'
 import type { BuyerRequest } from '@/types'
-import { Plus, Eye, Clock, CheckCircle, XCircle, Link as LinkIcon } from 'lucide-react'
+import { Plus, Eye, Clock, CheckCircle, XCircle, Link as LinkIcon, Sparkles, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
@@ -70,9 +70,9 @@ export default function BuyerRequestsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading requests...</p>
         </div>
       </div>
@@ -80,25 +80,25 @@ export default function BuyerRequestsPage() {
   }
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative bg-[#0a0a0a]">
       <Navbar />
       
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-6 py-12 pt-32">
         <div className="flex items-center justify-between mb-12">
           <div>
-            <h1 className="text-5xl font-bold gradient-text mb-2 tracking-tight">My Requests</h1>
+            <h1 className="text-5xl font-bold text-white mb-2 tracking-tight">My Requests</h1>
             <p className="text-gray-400 text-lg">Manage your carbon credit requests</p>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/buyer/transactions"
-              className="btn-secondary px-6 py-3 rounded-xl font-semibold text-sm transition"
+              className="px-6 py-3 rounded-lg font-semibold text-sm transition bg-black/50 border-2 border-green-500/40 text-white hover:border-green-500/60 hover:bg-black/60"
             >
               Transactions
             </Link>
             <Link
               href="/buyer/new-request"
-              className="btn-primary px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2"
+              className="px-6 py-3 rounded-lg font-semibold text-sm flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30"
             >
               <Plus className="w-5 h-5" />
               New Request
@@ -107,19 +107,22 @@ export default function BuyerRequestsPage() {
         </div>
 
         {requests.length === 0 ? (
-          <div className="glass-strong rounded-2xl p-16 text-center border border-purple-500/20">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500/20 to-purple-600/20 flex items-center justify-center mx-auto mb-6">
-              <span className="text-4xl">✨</span>
+          <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-16 text-center backdrop-blur-xl shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+            <div className="relative z-10">
+              <div className="w-20 h-20 rounded-full bg-green-500/30 border-2 border-green-500/50 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/20">
+                <Sparkles className="w-10 h-10 text-green-400" />
+              </div>
+              <p className="text-gray-300 text-xl mb-2 font-semibold">No requests yet</p>
+              <p className="text-gray-500 mb-6">Get started by creating your first carbon credit request</p>
+              <Link
+                href="/buyer/new-request"
+                className="px-8 py-3 rounded-lg font-semibold inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/30"
+              >
+                Create Request
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
-            <p className="text-gray-300 text-xl mb-2 font-semibold">No requests yet</p>
-            <p className="text-gray-500 mb-6">Get started by creating your first carbon credit request</p>
-            <Link
-              href="/buyer/new-request"
-              className="btn-primary px-8 py-3 rounded-xl font-semibold inline-flex items-center gap-2"
-            >
-              Create Request
-              <span>→</span>
-            </Link>
           </div>
         ) : (
           <div className="grid gap-6">
@@ -127,9 +130,10 @@ export default function BuyerRequestsPage() {
               <Link
                 key={request.id}
                 href={`/buyer/request/${request.id}`}
-                className="glass-strong rounded-2xl p-8 border border-purple-500/20 hover:border-purple-500/40 transition-all group hover:scale-[1.01] hover:shadow-xl hover:shadow-purple-500/10"
+                className="relative group bg-black/50 border-2 border-green-500/40 rounded-2xl p-8 backdrop-blur-xl hover:border-green-500/60 transition-all duration-300 shadow-2xl hover:shadow-green-500/20"
               >
-                <div className="flex items-start justify-between">
+                <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
+                <div className="flex items-start justify-between relative z-10">
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-6">
                       <h3 className="text-2xl font-bold text-white">{request.productName}</h3>
@@ -146,7 +150,7 @@ export default function BuyerRequestsPage() {
                       </div>
                       <div>
                         <p className="text-gray-500 text-xs mb-1 font-medium">Quotes</p>
-                        <p className="text-purple-400 font-bold text-lg">{request.quoteCount ?? request.quotes?.length ?? 0}</p>
+                        <p className="text-green-400 font-bold text-lg">{request.quoteCount ?? request.quotes?.length ?? 0}</p>
                       </div>
                       {request.maxPrice && (
                         <div>
@@ -158,7 +162,7 @@ export default function BuyerRequestsPage() {
                         <div className="md:col-span-4 mt-4">
                           <Link
                             href={`/transaction/${request.transaction.id}`}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-purple-500/30"
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition shadow-lg shadow-green-600/30"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <LinkIcon className="w-4 h-4" />
@@ -174,7 +178,7 @@ export default function BuyerRequestsPage() {
                     </div>
                   </div>
                   
-                  <Eye className="w-5 h-5 text-gray-500 group-hover:text-purple-400 transition" />
+                  <Eye className="w-5 h-5 text-gray-500 group-hover:text-green-400 transition" />
                 </div>
               </Link>
             ))}

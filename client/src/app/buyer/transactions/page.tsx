@@ -54,9 +54,9 @@ export default function BuyerTransactionsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading transactions...</p>
         </div>
       </div>
@@ -66,58 +66,62 @@ export default function BuyerTransactionsPage() {
   const totalAmount = transactions.reduce((sum, t) => sum + ((t.finalPrice || t.price || 0) * t.quantity), 0)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">
+    <div className="min-h-screen bg-[#0a0a0a]">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-6 py-12 pt-32">
         <Link
           href="/buyer/requests"
-          className="flex items-center gap-2 text-gray-400 hover:text-primary-400 mb-8 transition"
+          className="flex items-center gap-2 text-gray-400 hover:text-green-400 mb-8 transition"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to My Requests
         </Link>
 
         <div className="mb-8">
-          <h1 className="text-4xl font-bold gradient-text mb-2">Completed Transactions</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">Completed Transactions</h1>
           <p className="text-gray-400">All your completed carbon credit purchases</p>
         </div>
 
         {/* Summary Cards */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <div className="glass-strong rounded-2xl p-8 border border-purple-500/20">
-            <div className="flex items-center justify-between mb-6">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20">
-                <DollarSign className="w-6 h-6 text-purple-400" />
+          <div className="relative group bg-black/50 border-2 border-green-500/40 rounded-2xl p-8 backdrop-blur-xl hover:border-green-500/60 transition-all duration-300 shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="flex items-center justify-between mb-6 relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-green-500/30 border-2 border-green-500/50 flex items-center justify-center shadow-lg shadow-green-500/20">
+                <DollarSign className="w-6 h-6 text-green-400" />
               </div>
               <span className="text-3xl font-bold text-white">${totalAmount.toFixed(2)}</span>
             </div>
-            <p className="text-gray-400 text-sm font-medium">Total Amount Spent</p>
+            <p className="text-gray-400 text-sm font-medium relative z-10">Total Amount Spent</p>
           </div>
-
         </div>
 
         {/* Transactions List */}
         {transactions.length === 0 ? (
-          <div className="glass rounded-xl p-12 border border-primary-500/20 text-center">
-            <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">No Completed Transactions</h2>
-            <p className="text-gray-400 mb-6">You haven't completed any transactions yet.</p>
-            <Link
-              href="/buyer/new-request"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-semibold transition"
-            >
-              Create New Request
-            </Link>
+          <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-12 text-center backdrop-blur-xl shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+            <div className="relative z-10">
+              <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-white mb-2">No Completed Transactions</h2>
+              <p className="text-gray-400 mb-6">You haven't completed any transactions yet.</p>
+              <Link
+                href="/buyer/new-request"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition shadow-lg shadow-green-600/30"
+              >
+                Create New Request
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
             {transactions.map((transaction) => (
               <div
                 key={transaction.id}
-                className="glass rounded-xl p-6 border border-primary-500/20 hover:border-primary-500/40 transition"
+                className="relative group bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl hover:border-green-500/60 transition-all duration-300 shadow-2xl"
               >
-                <div className="flex items-start justify-between">
+                <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
+                <div className="flex items-start justify-between relative z-10">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-4">
                       <CheckCircle className="w-6 h-6 text-green-400" />
@@ -140,7 +144,7 @@ export default function BuyerTransactionsPage() {
 
                     <div className="flex items-center gap-4 text-sm">
                       {(transaction.solanaSignature || transaction.blockchainSignature) && (
-                        <div className="flex items-center gap-2 text-primary-400">
+                        <div className="flex items-center gap-2 text-green-400">
                           <ExternalLink className="w-4 h-4" />
                           <span className="font-mono text-xs">
                             {(transaction.solanaSignature || transaction.blockchainSignature || '').slice(0, 16)}...
@@ -152,7 +156,7 @@ export default function BuyerTransactionsPage() {
 
                   <Link
                     href={`/transaction/${transaction.id}`}
-                    className="ml-4 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-semibold transition"
+                    className="ml-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition shadow-lg shadow-green-600/30"
                   >
                     View Details
                   </Link>

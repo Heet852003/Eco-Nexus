@@ -9,8 +9,11 @@ import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/hooks/useAuth'
 import { getDashboard } from '@/lib/api'
-import { TrendingUp, Leaf, Award, BarChart3 } from 'lucide-react'
+import { TrendingUp, Award, Sparkles, Search, FileText, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { Button } from '@/components/ui/button'
+import { PlanetBackground } from '@/components/PlanetBackground'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -81,9 +84,9 @@ export default function DashboardPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative">
+      <div className="min-h-screen flex items-center justify-center relative bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading dashboard...</p>
         </div>
       </div>
@@ -91,105 +94,152 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen relative">
+    <section className="relative min-h-screen pt-32 pb-24 px-6 overflow-hidden bg-[#0a0a0a]">
+      <PlanetBackground />
+      
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-green-500/5 via-transparent to-transparent" />
+      
       <Navbar />
       
-      <div className="container mx-auto px-6 py-12">
-        {/* Hero Section */}
-        <div className="mb-16 fade-in">
-          <h1 className="text-6xl md:text-7xl font-bold gradient-text mb-4 tracking-tight">
-            Welcome to EcoNexus
-          </h1>
-          <p className="text-xl text-gray-400 max-w-2xl">
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="mb-16"
+        >
+          <h1 className="text-7xl mb-4 font-bold">Welcome to Eco-Nexus</h1>
+          <p className="text-xl text-gray-400">
             Intelligent carbon credit marketplace powered by AI & blockchain
           </p>
-        </div>
+        </motion.div>
 
-        {/* Stats Grid - Modern Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          <div className="glass-strong rounded-2xl p-8 border border-purple-500/20 hover:border-purple-500/40 transition-all group hover:scale-[1.02]">
-            <div className="flex items-center justify-between mb-6">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20 group-hover:from-purple-500/30 group-hover:to-purple-600/30 transition">
-                <TrendingUp className="w-6 h-6 text-purple-400" />
-              </div>
-              <span className="text-3xl font-bold text-white">
-                {dashboardData?.total_transactions || 0}
-              </span>
-            </div>
-            <p className="text-gray-400 text-sm font-medium">Transactions</p>
-          </div>
-
-          <div className="glass-strong rounded-2xl p-8 border border-purple-500/20 hover:border-purple-500/40 transition-all group hover:scale-[1.02]">
-            <div className="flex items-center justify-between mb-6">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-600/20 group-hover:from-purple-500/30 group-hover:to-purple-600/30 transition">
-                <Award className="w-6 h-6 text-purple-400" />
-              </div>
-              <span className="text-3xl font-bold text-white">
-                {user?.sustainabilityScore || 50}
-              </span>
-            </div>
-            <p className="text-gray-400 text-sm font-medium">Sustainability Score</p>
-          </div>
-
-        </div>
-
-        {/* Quick Actions - Modern Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link 
-            href="/buyer/new-request" 
-            className="glass-strong rounded-2xl p-10 border border-purple-500/20 hover:border-purple-500/40 transition-all group hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/20"
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
+            className="relative group"
           >
-            <div className="mb-6">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/30 to-purple-600/30 flex items-center justify-center mb-4 group-hover:from-purple-500/40 group-hover:to-purple-600/40 transition">
-                <span className="text-2xl">✨</span>
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-3">Create Request</h2>
-              <p className="text-gray-400 text-sm leading-relaxed">Post a new carbon credit request and get AI-powered recommendations</p>
-            </div>
-            <div className="btn-primary px-6 py-3 rounded-xl font-semibold text-sm inline-flex items-center gap-2">
-              New Request
-              <span>→</span>
-            </div>
-          </Link>
-
-          <Link 
-            href="/seller/requests" 
-            className="glass-strong rounded-2xl p-10 border border-purple-500/20 hover:border-purple-500/40 transition-all group hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/20"
-          >
-            <div className="mb-6">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/30 to-purple-600/30 flex items-center justify-center mb-4 group-hover:from-purple-500/40 group-hover:to-purple-600/40 transition">
-                <span className="text-2xl">🔍</span>
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-3">Browse Requests</h2>
-              <p className="text-gray-400 text-sm leading-relaxed">Discover buyer requests and submit competitive quotes</p>
-            </div>
-            <div className="btn-primary px-6 py-3 rounded-xl font-semibold text-sm inline-flex items-center gap-2">
-              View Requests
-              <span>→</span>
-            </div>
-          </Link>
-
-          {user?.roles?.isBuyer && (
-            <Link 
-              href="/analytics/report" 
-              className="glass-strong rounded-2xl p-10 border border-purple-500/20 hover:border-purple-500/40 transition-all group hover:scale-[1.02] hover:shadow-2xl hover:shadow-purple-500/20"
-            >
-              <div className="mb-6">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500/30 to-purple-600/30 flex items-center justify-center mb-4 group-hover:from-purple-500/40 group-hover:to-purple-600/40 transition">
-                  <span className="text-2xl">📊</span>
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-8 backdrop-blur-xl hover:border-green-500/60 transition-all duration-300 shadow-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="w-12 h-12 rounded-xl bg-green-500/30 border-2 border-green-500/50 flex items-center justify-center mb-6 shadow-lg shadow-green-500/20">
+                    <TrendingUp className="w-6 h-6 text-green-400" />
+                  </div>
+                  <div className="text-6xl mb-2">{dashboardData?.total_transactions || 0}</div>
+                  <div className="text-gray-300">Transactions</div>
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-3">View Report</h2>
-                <p className="text-gray-400 text-sm leading-relaxed">Comprehensive transaction reports and analytics</p>
               </div>
-              <div className="btn-primary px-6 py-3 rounded-xl font-semibold text-sm inline-flex items-center gap-2">
-                View Report
-                <span>→</span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-8 backdrop-blur-xl hover:border-green-500/60 transition-all duration-300 shadow-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="w-12 h-12 rounded-xl bg-green-500/30 border-2 border-green-500/50 flex items-center justify-center mb-6 shadow-lg shadow-green-500/20">
+                    <Award className="w-6 h-6 text-green-400" />
+                  </div>
+                  <div className="text-6xl mb-2">{user?.sustainabilityScore || 100}</div>
+                  <div className="text-gray-300">Sustainability Score</div>
+                </div>
               </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Create Request Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+            <Link href="/buyer/new-request" className="relative bg-black/50 border-2 border-green-500/50 rounded-2xl p-8 backdrop-blur-xl hover:border-green-500/70 transition-all duration-300 h-full flex flex-col shadow-2xl block">
+              <div className="w-14 h-14 rounded-xl bg-green-500/30 border-2 border-green-500/60 flex items-center justify-center mb-6 shadow-lg shadow-green-500/30">
+                <Sparkles className="w-7 h-7 text-green-400" />
+              </div>
+              
+              <h3 className="text-2xl mb-3">Create Request</h3>
+              <p className="text-gray-300 mb-8 flex-grow">
+                Post a new carbon credit request and get AI-powered recommendations
+              </p>
+              
+              <Button className="bg-green-600 hover:bg-green-700 text-white w-fit group/btn shadow-lg shadow-green-600/30">
+                New Request
+                <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
+              </Button>
             </Link>
+          </motion.div>
+
+          {/* Browse Requests Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.6 }}
+            className="relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+            <Link href="/seller/requests" className="relative bg-black/50 border-2 border-green-500/50 rounded-2xl p-8 backdrop-blur-xl hover:border-green-500/70 transition-all duration-300 h-full flex flex-col shadow-2xl block">
+              <div className="w-14 h-14 rounded-xl bg-green-500/30 border-2 border-green-500/60 flex items-center justify-center mb-6 shadow-lg shadow-green-500/30">
+                <Search className="w-7 h-7 text-green-400" />
+              </div>
+              
+              <h3 className="text-2xl mb-3">Browse Requests</h3>
+              <p className="text-gray-300 mb-8 flex-grow">
+                Discover buyer requests and submit competitive quotes
+              </p>
+              
+              <Button className="bg-green-600 hover:bg-green-700 text-white w-fit group/btn shadow-lg shadow-green-600/30">
+                View Requests
+                <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </motion.div>
+
+          {/* View Report Card */}
+          {user?.roles?.isBuyer && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
+              className="relative group"
+            >
+              <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+              <Link href="/analytics/report" className="relative bg-black/50 border-2 border-green-500/50 rounded-2xl p-8 backdrop-blur-xl hover:border-green-500/70 transition-all duration-300 h-full flex flex-col shadow-2xl block">
+                <div className="w-14 h-14 rounded-xl bg-green-500/30 border-2 border-green-500/60 flex items-center justify-center mb-6 shadow-lg shadow-green-500/30">
+                  <FileText className="w-7 h-7 text-green-400" />
+                </div>
+                
+                <h3 className="text-2xl mb-3">View Report</h3>
+                <p className="text-gray-300 mb-8 flex-grow">
+                  Comprehensive transaction reports and analytics
+                </p>
+                
+                <Button className="bg-green-600 hover:bg-green-700 text-white w-fit group/btn shadow-lg shadow-green-600/30">
+                  View Report
+                  <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            </motion.div>
           )}
         </div>
       </div>
-    </div>
+    </section>
   )
 }
 

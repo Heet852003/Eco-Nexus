@@ -127,9 +127,9 @@ export default function SellerQuotesPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading quotes...</p>
         </div>
       </div>
@@ -137,23 +137,26 @@ export default function SellerQuotesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">
+    <div className="min-h-screen bg-[#0a0a0a]">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold gradient-text mb-8">My Quotes & Negotiations</h1>
+      <div className="container mx-auto px-6 py-12 pt-32">
+        <h1 className="text-4xl font-bold text-white mb-8">My Quotes & Negotiations</h1>
 
         {threads.length === 0 ? (
-          <div className="glass rounded-xl p-12 text-center border border-primary-500/20">
-            <p className="text-gray-400 text-lg mb-4">No active negotiations</p>
-            <p className="text-gray-500 text-sm">Quotes you submit will appear here when buyers start negotiations</p>
+          <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-12 text-center backdrop-blur-xl shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+            <div className="relative z-10">
+              <p className="text-gray-400 text-lg mb-4">No active negotiations</p>
+              <p className="text-gray-500 text-sm">Quotes you submit will appear here when buyers start negotiations</p>
+            </div>
           </div>
         ) : (
           <div className="grid gap-6">
             {threads.map((thread) => (
               <div
                 key={thread.id}
-                className="glass rounded-xl p-6 border border-primary-500/20"
+                className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl shadow-2xl"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -172,7 +175,7 @@ export default function SellerQuotesPage() {
                   <span className={`px-3 py-1 rounded-lg text-sm font-semibold ${
                     thread.status === 'OPEN' ? 'bg-yellow-500/20 text-yellow-400' :
                     thread.status === 'CLOSED' ? 'bg-gray-500/20 text-gray-400' :
-                    'bg-primary-500/20 text-primary-400'
+                    'bg-green-500/20 text-green-400'
                   }`}>
                     {thread.status}
                   </span>
@@ -193,7 +196,7 @@ export default function SellerQuotesPage() {
                               price: parseFloat(e.target.value) || 0
                             }
                           })}
-                          className="w-full px-3 py-2 bg-dark-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                          className="w-full px-3 py-2 bg-black/40 border-2 border-green-500/40 rounded-lg text-white text-sm focus:outline-none focus:border-green-500/60 backdrop-blur-sm transition-colors"
                         />
                       </div>
                       <div>
@@ -209,14 +212,14 @@ export default function SellerQuotesPage() {
                               deliveryDays: parseInt(e.target.value) || 7
                             }
                           })}
-                          className="w-full px-3 py-2 bg-dark-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
+                          className="w-full px-3 py-2 bg-black/40 border-2 border-green-500/40 rounded-lg text-white text-sm focus:outline-none focus:border-green-500/60 backdrop-blur-sm transition-colors"
                         />
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleUpdateQuote(thread.quoteId)}
                           disabled={updating}
-                          className="flex-1 flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-500 text-white py-2 rounded-lg font-semibold transition disabled:opacity-50 text-sm"
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition shadow-lg shadow-green-600/30 disabled:opacity-50 text-sm"
                         >
                           <Save className="w-3 h-3" />
                           Save
@@ -241,7 +244,7 @@ export default function SellerQuotesPage() {
                           sellerId: thread.sellerId,
                           buyerName: thread.buyerName || 'Buyer'
                         })}
-                        className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-semibold transition"
+                          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-semibold transition shadow-lg shadow-blue-600/30"
                       >
                         <MessageCircle className="w-4 h-4" />
                         {thread.status === 'OPEN' ? 'Open Chat' : 'Continue Chat'}
@@ -249,7 +252,7 @@ export default function SellerQuotesPage() {
                       {thread.status !== 'CLOSED' && thread.quote && thread.quote.status !== 'ACCEPTED' && (
                         <button
                           onClick={() => setEditingQuote(thread.quoteId)}
-                          className="w-full flex items-center justify-center gap-2 bg-dark-800 border border-gray-700 hover:border-primary-500 text-white py-2 rounded-lg font-semibold transition"
+                          className="w-full flex items-center justify-center gap-2 bg-black/40 border-2 border-green-500/40 hover:border-green-500/60 text-white py-2 rounded-lg font-semibold transition"
                         >
                           <Edit2 className="w-4 h-4" />
                           Edit Quote
@@ -266,7 +269,7 @@ export default function SellerQuotesPage() {
         {/* Negotiation Chat Modal */}
         {showChat && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-dark-900 rounded-xl w-full max-w-4xl max-h-[90vh] relative">
+            <div className="bg-black/90 border-2 border-green-500/40 rounded-2xl w-full max-w-4xl max-h-[90vh] relative backdrop-blur-xl shadow-2xl">
               <button
                 onClick={() => setShowChat(null)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-white z-10"

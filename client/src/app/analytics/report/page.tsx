@@ -102,9 +102,9 @@ export default function ReportPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading report...</p>
         </div>
       </div>
@@ -113,9 +113,9 @@ export default function ReportPage() {
 
   if (!analytics) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">
+      <div className="min-h-screen bg-[#0a0a0a]">
         <Navbar />
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-6 py-12 pt-32">
           <p className="text-gray-400">No analytics data available</p>
         </div>
       </div>
@@ -123,18 +123,18 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">
+    <div className="min-h-screen bg-[#0a0a0a]">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-6 py-12 pt-32">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold gradient-text mb-2">Report & Analytics</h1>
+            <h1 className="text-4xl font-bold text-white mb-2">Report & Analytics</h1>
             <p className="text-gray-400">Comprehensive transaction data for reporting purposes</p>
           </div>
           <button
             onClick={exportToCSV}
-            className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-semibold transition"
+            className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition shadow-lg shadow-green-600/30"
           >
             <Download className="w-5 h-5" />
             Export CSV
@@ -143,29 +143,35 @@ export default function ReportPage() {
 
         {/* Summary Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="glass rounded-xl p-6 border border-primary-500/20">
-            <div className="flex items-center justify-between mb-4">
-              <DollarSign className="w-8 h-8 text-primary-500" />
+          <div className="relative group bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl hover:border-green-500/60 transition-all duration-300 shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="flex items-center justify-between mb-4 relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-green-500/30 border-2 border-green-500/50 flex items-center justify-center shadow-lg shadow-green-500/20">
+                <DollarSign className="w-8 h-8 text-green-400" />
+              </div>
               <span className="text-2xl font-bold text-white">
                 ${analytics.totalAmountPurchased.toFixed(2)}
               </span>
             </div>
-            <p className="text-gray-400">Total Amount Purchased</p>
+            <p className="text-gray-400 relative z-10">Total Amount Purchased</p>
           </div>
 
-          <div className="glass rounded-xl p-6 border border-primary-500/20">
-            <div className="flex items-center justify-between mb-4">
-              <Package className="w-8 h-8 text-primary-500" />
+          <div className="relative group bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl hover:border-green-500/60 transition-all duration-300 shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="flex items-center justify-between mb-4 relative z-10">
+              <div className="w-12 h-12 rounded-xl bg-green-500/30 border-2 border-green-500/50 flex items-center justify-center shadow-lg shadow-green-500/20">
+                <Package className="w-8 h-8 text-green-400" />
+              </div>
               <span className="text-2xl font-bold text-white">
                 {analytics.totalQuantity}
               </span>
             </div>
-            <p className="text-gray-400">Total Quantity</p>
+            <p className="text-gray-400 relative z-10">Total Quantity</p>
           </div>
         </div>
 
         {/* Detailed Summary */}
-        <div className="glass rounded-xl p-6 border border-primary-500/20 mb-8">
+        <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl shadow-2xl mb-8">
           <h2 className="text-2xl font-bold text-white mb-6">Summary Statistics</h2>
           <div className="grid md:grid-cols-3 gap-6">
             <div>
@@ -180,7 +186,7 @@ export default function ReportPage() {
         </div>
 
         {/* Transaction Details Table */}
-        <div className="glass rounded-xl p-6 border border-primary-500/20">
+        <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl shadow-2xl">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Transaction Details</h2>
             <span className="text-gray-400 text-sm">{analytics.transactions.length} transactions</span>
@@ -214,7 +220,7 @@ export default function ReportPage() {
                     </td>
                     <td className="py-3 px-4">
                       {transaction.blockchainSignature ? (
-                        <span className="text-primary-400 font-mono text-xs">
+                        <span className="text-green-400 font-mono text-xs">
                           {transaction.blockchainSignature.slice(0, 8)}...
                         </span>
                       ) : (
@@ -225,7 +231,7 @@ export default function ReportPage() {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-primary-500">
+                <tr className="border-t-2 border-green-500/40">
                   <td colSpan={2} className="py-4 px-4 text-white font-bold">TOTAL</td>
                   <td className="py-4 px-4 text-white font-bold text-right">{analytics.totalQuantity}</td>
                   <td className="py-4 px-4 text-white font-bold text-right">${analytics.totalAmountPurchased.toFixed(2)}</td>

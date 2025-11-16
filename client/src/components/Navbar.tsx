@@ -10,6 +10,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Leaf, LogOut, User, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import toast from 'react-hot-toast'
+import { motion } from 'framer-motion'
+import { Button } from './ui/button'
 
 export default function Navbar() {
   const pathname = usePathname()
@@ -107,111 +109,63 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="glass-strong border-b border-purple-500/20 sticky top-0 z-50 backdrop-blur-xl">
-      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/dashboard" className="flex items-center space-x-3 group">
-          <div className="relative">
-            <Leaf className="w-8 h-8 text-purple-400 group-hover:text-purple-300 transition-colors" />
-            <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-xl group-hover:bg-purple-500/30 transition" />
+    <motion.nav
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="fixed top-0 left-0 right-0 z-50 px-6 py-4 bg-[#0a0a0a]/80 backdrop-blur-lg border-b border-white/5"
+    >
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+            <Leaf className="w-5 h-5 text-white" />
           </div>
-          <span className="text-2xl font-bold gradient-text tracking-tight">EcoNexus</span>
+          <span className="text-xl">Eco-Nexus</span>
         </Link>
 
-        {user && (
-          <div className="flex items-center space-x-8">
-            {/* Main Navigation - Clean & Minimal */}
-            <div className="hidden lg:flex items-center space-x-6">
-              <Link 
-                href="/dashboard" 
-                className={`text-sm font-medium transition-all ${
-                  pathname === '/dashboard' 
-                    ? 'text-purple-400' 
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Dashboard
+        <div className="hidden md:flex items-center gap-8">
+          <Link href="/dashboard" className="text-sm text-gray-400 hover:text-white transition-colors">
+            Dashboard
+          </Link>
+          {user && activeRole === 'buyer' && (
+            <>
+              <Link href="/buyer/requests" className="text-sm text-gray-400 hover:text-white transition-colors">
+                Requests
               </Link>
-              {activeRole === 'buyer' && (
-                <>
-                  <Link 
-                    href="/buyer/requests" 
-                    className={`text-sm font-medium transition-all ${
-                      pathname?.startsWith('/buyer') 
-                        ? 'text-purple-400' 
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    My Requests
-                  </Link>
-                  <Link 
-                    href="/buyer/transactions" 
-                    className={`text-sm font-medium transition-all ${
-                      pathname === '/buyer/transactions' 
-                        ? 'text-purple-400' 
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Transactions
-                  </Link>
-                  {user?.roles?.isBuyer && (
-                    <Link 
-                      href="/analytics/report" 
-                      className={`text-sm font-medium transition-all ${
-                        pathname === '/analytics/report' 
-                          ? 'text-purple-400' 
-                          : 'text-gray-400 hover:text-white'
-                      }`}
-                    >
-                      Report
-                    </Link>
-                  )}
-                </>
+              <Link href="/buyer/transactions" className="text-sm text-gray-400 hover:text-white transition-colors">
+                Transactions
+              </Link>
+              {user?.roles?.isBuyer && (
+                <Link href="/analytics/report" className="text-sm text-gray-400 hover:text-white transition-colors">
+                  Report
+                </Link>
               )}
-              {activeRole === 'seller' && (
-                <>
-                  <Link 
-                    href="/seller/requests" 
-                    className={`text-sm font-medium transition-all ${
-                      pathname?.startsWith('/seller/requests') 
-                        ? 'text-purple-400' 
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Requests
-                  </Link>
-                  <Link 
-                    href="/seller/quotes" 
-                    className={`text-sm font-medium transition-all ${
-                      pathname === '/seller/quotes' 
-                        ? 'text-purple-400' 
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    My Quotes
-                  </Link>
-                  <Link 
-                    href="/seller/transactions" 
-                    className={`text-sm font-medium transition-all ${
-                      pathname === '/seller/transactions' 
-                        ? 'text-purple-400' 
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Sales
-                  </Link>
-                </>
-              )}
-            </div>
-
-            {/* Role Switcher - Modern Toggle */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 glass rounded-full p-1 border border-purple-500/30">
+            </>
+          )}
+          {user && activeRole === 'seller' && (
+            <>
+              <Link href="/seller/requests" className="text-sm text-gray-400 hover:text-white transition-colors">
+                Requests
+              </Link>
+              <Link href="/seller/quotes" className="text-sm text-gray-400 hover:text-white transition-colors">
+                My Quotes
+              </Link>
+              <Link href="/seller/transactions" className="text-sm text-gray-400 hover:text-white transition-colors">
+                Sales
+              </Link>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          {user ? (
+            <>
+              <div className="flex items-center gap-1 bg-white/5 rounded-full p-1 border border-white/10">
                 <button
                   onClick={() => handleRoleChange('buyer')}
                   disabled={changingRole}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     activeRole === 'buyer'
-                      ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/50'
+                      ? 'bg-green-600 text-white'
                       : user.roles?.isBuyer
                       ? 'text-gray-400 hover:text-white hover:bg-white/5'
                       : 'text-gray-600 opacity-50 cursor-not-allowed'
@@ -225,7 +179,7 @@ export default function Navbar() {
                   disabled={changingRole}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     activeRole === 'seller'
-                      ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/50'
+                      ? 'bg-green-600 text-white'
                       : user.roles?.isSeller
                       ? 'text-gray-400 hover:text-white hover:bg-white/5'
                       : 'text-gray-600 opacity-50 cursor-not-allowed'
@@ -235,31 +189,35 @@ export default function Navbar() {
                   Seller{!user.roles?.isSeller && <span className="ml-1">+</span>}
                 </button>
                 {changingRole && (
-                  <RefreshCw className="w-4 h-4 text-purple-400 animate-spin mx-2" />
+                  <RefreshCw className="w-4 h-4 text-green-400 animate-spin mx-2" />
                 )}
               </div>
-              
-              {/* User Menu */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-sm text-gray-300">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="hidden md:block font-medium">{user.name}</span>
-                </div>
-                <button
-                  onClick={logout}
-                  className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                  title="Logout"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+              <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
+                <span className="text-sm text-white">{user.name?.charAt(0)?.toUpperCase() || 'U'}</span>
               </div>
-            </div>
-          </div>
-        )}
+              <button
+                onClick={logout}
+                className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            <>
+              <Button className="bg-green-600 hover:bg-green-700 text-white">
+                {activeRole === 'seller' ? 'Seller' : 'Buyer'}
+              </Button>
+              <Link href="/login">
+                <Button className="bg-green-600 hover:bg-green-700 text-white">
+                  Get Started
+                </Button>
+              </Link>
+            </>
+          )}
+        </div>
       </div>
-    </nav>
+    </motion.nav>
   )
 }
 

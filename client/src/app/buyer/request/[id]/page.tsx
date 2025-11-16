@@ -94,9 +94,9 @@ export default function RequestDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading request...</p>
         </div>
       </div>
@@ -108,41 +108,43 @@ export default function RequestDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">
+    <div className="min-h-screen bg-[#0a0a0a]">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-6 py-12 pt-32">
         <Link
           href="/buyer/requests"
-          className="flex items-center gap-2 text-gray-400 hover:text-primary-400 mb-8 transition"
+          className="flex items-center gap-2 text-gray-400 hover:text-green-400 mb-8 transition"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Requests
         </Link>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          <div className="glass rounded-xl p-6 border border-primary-500/20">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-3xl font-bold gradient-text">{request.productName}</h1>
-              {request.status !== 'completed' && request.status !== 'COMPLETED' && !request.transaction && (
-                <button
-                  onClick={() => editingRequest ? setEditingRequest(false) : setEditingRequest(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-dark-800 border border-gray-700 rounded-lg text-white hover:border-primary-500 transition"
-                >
-                  {editingRequest ? <XIcon className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
-                  {editingRequest ? 'Cancel' : 'Edit'}
-                </button>
-              )}
-              {request.transaction && (
-                <Link
-                  href={`/transaction/${request.transaction.id}`}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 border border-primary-500 rounded-lg text-white hover:bg-primary-500 transition"
-                >
-                  <LinkIcon className="w-4 h-4" />
-                  View Transaction
-                </Link>
-              )}
-            </div>
+          <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-8 backdrop-blur-xl shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-6">
+                <h1 className="text-3xl font-bold text-white">{request.productName}</h1>
+                {request.status !== 'completed' && request.status !== 'COMPLETED' && !request.transaction && (
+                  <button
+                    onClick={() => editingRequest ? setEditingRequest(false) : setEditingRequest(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-black/40 border-2 border-green-500/40 rounded-lg text-white hover:border-green-500/60 transition"
+                  >
+                    {editingRequest ? <XIcon className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                    {editingRequest ? 'Cancel' : 'Edit'}
+                  </button>
+                )}
+                {request.transaction && (
+                  <Link
+                    href={`/transaction/${request.transaction.id}`}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition shadow-lg shadow-green-600/30"
+                  >
+                    <LinkIcon className="w-4 h-4" />
+                    View Transaction
+                  </Link>
+                )}
+              </div>
             
             {editingRequest ? (
               <div className="space-y-4">
@@ -152,18 +154,7 @@ export default function RequestDetailPage() {
                     type="number"
                     value={editForm.quantity}
                     onChange={(e) => setEditForm({ ...editForm, quantity: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-dark-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-gray-400 text-sm mb-2 block">Desired Carbon Score (0-10)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={editForm.desiredCarbonScore}
-                    onChange={(e) => setEditForm({ ...editForm, desiredCarbonScore: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-dark-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                    className="w-full px-4 py-2 bg-black/40 border-2 border-green-500/40 rounded-lg text-white focus:outline-none focus:border-green-500/60 backdrop-blur-sm transition-colors"
                   />
                 </div>
                 <div>
@@ -172,7 +163,7 @@ export default function RequestDetailPage() {
                     type="number"
                     value={editForm.maxPrice}
                     onChange={(e) => setEditForm({ ...editForm, maxPrice: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-dark-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                    className="w-full px-4 py-2 bg-black/40 border-2 border-green-500/40 rounded-lg text-white focus:outline-none focus:border-green-500/60 backdrop-blur-sm transition-colors"
                   />
                 </div>
                 <div>
@@ -180,14 +171,14 @@ export default function RequestDetailPage() {
                   <textarea
                     value={editForm.notes}
                     onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                    className="w-full px-4 py-2 bg-dark-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                    className="w-full px-4 py-2 bg-black/40 border-2 border-green-500/40 rounded-lg text-white focus:outline-none focus:border-green-500/60 backdrop-blur-sm transition-colors"
                     rows={3}
                   />
                 </div>
                 <button
                   onClick={handleUpdateRequest}
                   disabled={updating}
-                  className="w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-500 text-white py-2 rounded-lg font-semibold transition disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold transition shadow-lg shadow-green-600/30 disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
                   {updating ? 'Updating...' : 'Save Changes'}
@@ -219,29 +210,31 @@ export default function RequestDetailPage() {
             )}
 
             {request.aiRecommendation && (
-              <div className="mt-6 pt-6 border-t border-gray-700">
+              <div className="mt-6 pt-6 border-t border-green-500/20">
                 <h3 className="text-lg font-bold text-white mb-4">AI Recommendation</h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="text-gray-400">Fair Price:</span> <span className="text-primary-400 font-semibold">${request.aiRecommendation.fairPrice}</span></p>
+                  <p><span className="text-gray-400">Fair Price:</span> <span className="text-green-400 font-semibold">${request.aiRecommendation.fairPrice}</span></p>
                   <p><span className="text-gray-400">Carbon Range:</span> <span className="text-white">{request.aiRecommendation.recommendedCarbonRange.min} - {request.aiRecommendation.recommendedCarbonRange.max}/10</span></p>
                 </div>
               </div>
             )}
+            </div>
           </div>
 
           <div>
             <h2 className="text-2xl font-bold text-white mb-6">Seller Quotes ({request.quotes?.length || 0})</h2>
             
             {!request.quotes || request.quotes.length === 0 ? (
-              <div className="glass rounded-xl p-8 text-center border border-primary-500/20">
-                <p className="text-gray-400">No quotes received yet</p>
+              <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-8 text-center backdrop-blur-xl shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+                <p className="text-gray-400 relative z-10">No quotes received yet</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {request.quotes.map((quote: SellerQuote) => (
                   <div
                     key={quote.id}
-                    className="glass rounded-xl p-6 border border-primary-500/20"
+                    className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl shadow-2xl"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div>
@@ -278,7 +271,7 @@ export default function RequestDetailPage() {
                             sellerId: quote.sellerId, 
                             sellerName: quote.sellerName 
                           })}
-                          className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-semibold transition"
+                          className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-semibold transition shadow-lg shadow-blue-600/30"
                         >
                           <MessageCircle className="w-4 h-4" />
                           {quote.status === 'negotiating' ? 'Continue Chat' : 'Negotiate'}
@@ -289,7 +282,7 @@ export default function RequestDetailPage() {
                       {(quote.status === 'pending' || quote.status === 'negotiating') && request.status !== 'accepted' && request.status !== 'completed' && (
                         <button
                           onClick={() => handleAcceptQuote(quote.id)}
-                          className="flex-1 bg-gradient-to-r from-primary-600 to-primary-500 text-white py-2 rounded-lg font-semibold hover:shadow-lg hover:shadow-primary-500/50 transition"
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold shadow-lg shadow-green-600/30 transition"
                         >
                           Accept Quote
                         </button>
@@ -313,7 +306,7 @@ export default function RequestDetailPage() {
         {/* Negotiation Chat Modal */}
         {showChat && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-dark-900 rounded-xl w-full max-w-4xl max-h-[90vh] relative">
+            <div className="bg-black/90 border-2 border-green-500/40 rounded-2xl w-full max-w-4xl max-h-[90vh] relative backdrop-blur-xl shadow-2xl">
               <button
                 onClick={() => setShowChat(null)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-white z-10"

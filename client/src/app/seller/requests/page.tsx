@@ -175,9 +175,9 @@ export default function SellerRequestsPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading...</p>
         </div>
       </div>
@@ -185,31 +185,33 @@ export default function SellerRequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">
+    <div className="min-h-screen bg-[#0a0a0a]">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold gradient-text mb-8">Available Requests</h1>
+      <div className="container mx-auto px-6 py-12 pt-32">
+        <h1 className="text-4xl font-bold text-white mb-8">Available Requests</h1>
 
         {/* Product Selection Screen */}
         {showProductSelector && (
-          <div className="glass rounded-xl p-8 border border-primary-500/20">
-            <h2 className="text-2xl font-bold text-white mb-4">Select Products You Want to Sell</h2>
-            <p className="text-gray-400 mb-6">Search and select the products you can provide. You'll only see requests for these products.</p>
-            
-            {/* Search Input */}
-            <div className="mb-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-dark-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
-                />
+          <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-8 backdrop-blur-xl shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+            <div className="relative z-10">
+              <h2 className="text-2xl font-bold text-white mb-4">Select Products You Want to Sell</h2>
+              <p className="text-gray-400 mb-6">Search and select the products you can provide. You'll only see requests for these products.</p>
+              
+              {/* Search Input */}
+              <div className="mb-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-black/40 border-2 border-green-500/40 rounded-lg text-white focus:outline-none focus:border-green-500/60 backdrop-blur-sm transition-colors"
+                  />
+                </div>
               </div>
-            </div>
 
             {/* Filtered Products Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -222,8 +224,8 @@ export default function SellerRequestsPage() {
                   onClick={() => handleProductSelection(product.id)}
                   className={`p-4 rounded-lg border-2 transition text-left ${
                     selectedProducts.includes(product.id)
-                      ? 'border-primary-500 bg-primary-500/10'
-                      : 'border-gray-700 bg-dark-800 hover:border-gray-600'
+                      ? 'border-green-500 bg-green-500/10'
+                      : 'border-green-500/40 bg-black/40 hover:border-green-500/60'
                   }`}
                 >
                   <div className="flex items-start justify-between">
@@ -232,7 +234,7 @@ export default function SellerRequestsPage() {
                       <p className="text-xs text-gray-400">{product.category}</p>
                     </div>
                     {selectedProducts.includes(product.id) && (
-                      <div className="w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center">
+                      <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                         <span className="text-white text-xs">✓</span>
                       </div>
                     )}
@@ -260,10 +262,11 @@ export default function SellerRequestsPage() {
               <button
                 onClick={handleSubmitProducts}
                 disabled={selectedProducts.length === 0}
-                className="px-6 py-2 bg-gradient-to-r from-primary-600 to-primary-500 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-primary-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold shadow-lg shadow-green-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Continue
               </button>
+            </div>
             </div>
           </div>
         )}
@@ -279,7 +282,7 @@ export default function SellerRequestsPage() {
                   return product ? (
                     <span
                       key={productId}
-                      className="px-3 py-1 bg-primary-600/20 text-primary-400 rounded-lg text-sm font-medium"
+                      className="px-3 py-1 bg-green-600/20 text-green-400 rounded-lg text-sm font-medium"
                     >
                       {product.name}
                     </span>
@@ -288,7 +291,7 @@ export default function SellerRequestsPage() {
               </div>
               <button
                 onClick={handleChangeProducts}
-                className="flex items-center gap-2 px-4 py-2 bg-dark-800 border border-gray-700 rounded-lg text-white hover:border-primary-500 transition"
+                className="flex items-center gap-2 px-4 py-2 bg-black/40 border-2 border-green-500/40 rounded-lg text-white hover:border-green-500/60 transition"
               >
                 <Filter className="w-4 h-4" />
                 <span>Change Products</span>
@@ -296,26 +299,32 @@ export default function SellerRequestsPage() {
             </div>
 
             {loading ? (
-              <div className="glass rounded-xl p-12 text-center border border-primary-500/20">
-                <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-gray-400">Loading requests...</p>
+              <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-12 text-center backdrop-blur-xl shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+                <div className="relative z-10">
+                  <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-gray-400">Loading requests...</p>
+                </div>
               </div>
             ) : requests.length === 0 ? (
-              <div className="glass rounded-xl p-12 text-center border border-primary-500/20">
-                <p className="text-gray-400 text-lg">No available requests for your selected products at the moment</p>
-                <button
-                  onClick={handleChangeProducts}
-                  className="mt-4 text-primary-400 hover:text-primary-300 transition"
-                >
-                  Change product selection
-                </button>
+              <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-12 text-center backdrop-blur-xl shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+                <div className="relative z-10">
+                  <p className="text-gray-400 text-lg">No available requests for your selected products at the moment</p>
+                  <button
+                    onClick={handleChangeProducts}
+                    className="mt-4 text-green-400 hover:text-green-300 transition"
+                  >
+                    Change product selection
+                  </button>
+                </div>
               </div>
             ) : (
           <div className="grid gap-6">
             {requests.map((request) => (
               <div
                 key={request.id}
-                className="glass rounded-xl p-6 border border-primary-500/20"
+                className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl shadow-2xl"
               >
                 <div className="grid lg:grid-cols-2 gap-6">
                   <div>
@@ -333,9 +342,9 @@ export default function SellerRequestsPage() {
                         </div>
                       )}
                       {request.aiRecommendation && (
-                        <div className="mt-4 pt-4 border-t border-gray-700">
+                        <div className="mt-4 pt-4 border-t border-green-500/20">
                           <p className="text-xs text-gray-400 mb-2">AI Recommended Price:</p>
-                          <p className="text-primary-400 font-semibold">${request.aiRecommendation.fairPrice}</p>
+                          <p className="text-green-400 font-semibold">${request.aiRecommendation.fairPrice}</p>
                         </div>
                       )}
                     </div>
@@ -348,7 +357,7 @@ export default function SellerRequestsPage() {
                       <label className="block text-sm font-medium text-gray-300 mb-2">
                         Price (USD) *
                       </label>
-                      <div className="relative">
+                        <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                           type="number"
@@ -362,7 +371,7 @@ export default function SellerRequestsPage() {
                               price: parseFloat(e.target.value) || 0
                             }
                           })}
-                          className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                          className="w-full pl-10 pr-4 py-2 bg-black/40 border-2 border-green-500/40 rounded-lg text-white focus:outline-none focus:border-green-500/60 backdrop-blur-sm transition-colors"
                         />
                       </div>
                     </div>
@@ -382,7 +391,7 @@ export default function SellerRequestsPage() {
                             deliveryDays: parseInt(e.target.value) || 1
                           }
                         })}
-                        className="w-full px-4 py-2 bg-dark-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                        className="w-full px-4 py-2 bg-black/40 border-2 border-green-500/40 rounded-lg text-white focus:outline-none focus:border-green-500/60 backdrop-blur-sm transition-colors"
                       />
                     </div>
 
@@ -398,7 +407,7 @@ export default function SellerRequestsPage() {
                             localFlag: e.target.checked
                           }
                         })}
-                        className="form-checkbox h-5 w-5 text-primary-500 rounded border-gray-600 bg-dark-800 focus:ring-primary-500"
+                        className="form-checkbox h-5 w-5 text-green-500 rounded border-green-500/40 bg-black/40 focus:ring-green-500"
                       />
                       <label htmlFor={`local-flag-${request.id}`} className="ml-2 text-sm text-gray-300">
                         Local supplier
@@ -408,7 +417,7 @@ export default function SellerRequestsPage() {
                     <button
                       onClick={() => handleSubmitQuote(request.id)}
                       disabled={submittingQuote === request.id}
-                      className="w-full bg-gradient-to-r from-primary-600 to-primary-500 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-primary-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-semibold flex items-center justify-center gap-2 shadow-lg shadow-green-600/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Send className="w-4 h-4" />
                       {submittingQuote === request.id ? 'Submitting...' : 'Submit Quote'}

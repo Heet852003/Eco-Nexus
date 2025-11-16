@@ -13,7 +13,7 @@ import {
   sendNegotiationMessage,
   getNegotiationMessages 
 } from '@/lib/api'
-import { MessageCircle, Send, Bot, User } from 'lucide-react'
+import { MessageCircle, Send, Bot, User, Lightbulb } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface ChatMessage {
@@ -285,8 +285,9 @@ export default function NegotiationChat({
                   </div>
                   <p className="text-white text-sm">{message.content}</p>
                   {message.aiHint && (
-                    <p className="text-xs text-gray-300 mt-2 italic">
-                      💡 {message.aiHint}
+                    <p className="text-xs text-gray-300 mt-2 italic flex items-start gap-2">
+                      <Lightbulb className="w-3 h-3 text-yellow-400 mt-0.5 flex-shrink-0" />
+                      <span>{message.aiHint}</span>
                     </p>
                   )}
                 </div>

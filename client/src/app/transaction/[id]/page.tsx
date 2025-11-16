@@ -92,9 +92,9 @@ export default function TransactionDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400">Loading transaction...</p>
         </div>
       </div>
@@ -109,21 +109,23 @@ export default function TransactionDetailPage() {
   const isSeller = user?.id === transaction.sellerId
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800">
+    <div className="min-h-screen bg-[#0a0a0a]">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-6 py-12 pt-32">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 text-gray-400 hover:text-primary-400 mb-8 transition"
+          className="flex items-center gap-2 text-gray-400 hover:text-green-400 mb-8 transition"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
         </Link>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          <div className="glass rounded-xl p-6 border border-primary-500/20">
-            <h1 className="text-3xl font-bold gradient-text mb-6">Transaction Details</h1>
+          <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-8 backdrop-blur-xl shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+            <div className="relative z-10">
+              <h1 className="text-3xl font-bold text-white mb-6">Transaction Details</h1>
             
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -151,7 +153,7 @@ export default function TransactionDetailPage() {
               {(transaction.blockchainSignature || transaction.solanaSignature) && (
                 <div className="flex items-center justify-between">
                   <span className="text-gray-400">Blockchain:</span>
-                  <span className="text-primary-400 font-mono text-sm">
+                  <span className="text-green-400 font-mono text-sm">
                     {(transaction.blockchainSignature || transaction.solanaSignature || '').slice(0, 10)}...
                   </span>
                 </div>
@@ -161,17 +163,19 @@ export default function TransactionDetailPage() {
 
           <div className="space-y-6">
             {(transaction.status === 'pending' || transaction.status === 'PENDING') && (isBuyer || isSeller) && (
-              <div className="glass rounded-xl p-6 border border-primary-500/20">
-                <h2 className="text-xl font-bold text-white mb-4">Commit to Blockchain</h2>
-                <p className="text-gray-400 mb-4 text-sm">
-                  Finalize this transaction by committing it to the Solana blockchain. 
-                  This will update sustainability scores and make the transaction immutable.
-                </p>
-                <button
-                  onClick={handleCommitToBlockchain}
-                  disabled={committing}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary-600 to-primary-500 text-white py-3 rounded-lg font-semibold hover:shadow-lg hover:shadow-primary-500/50 transition disabled:opacity-50"
-                >
+              <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+                <div className="relative z-10">
+                  <h2 className="text-xl font-bold text-white mb-4">Commit to Blockchain</h2>
+                  <p className="text-gray-400 mb-4 text-sm">
+                    Finalize this transaction by committing it to the Solana blockchain. 
+                    This will update sustainability scores and make the transaction immutable.
+                  </p>
+                  <button
+                    onClick={handleCommitToBlockchain}
+                    disabled={committing}
+                    className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold shadow-lg shadow-green-600/30 transition disabled:opacity-50"
+                  >
                   {committing ? (
                     <>
                       <Loader className="w-5 h-5 animate-spin" />
@@ -188,22 +192,25 @@ export default function TransactionDetailPage() {
             )}
 
             {(transaction.status === 'committed' || transaction.status === 'COMMITTED' || transaction.status === 'completed' || transaction.status === 'COMPLETED') ? (
-              <div className="glass rounded-xl p-6 border border-green-500/20 bg-green-500/5">
-                <div className="flex items-center gap-3 mb-4">
-                  <CheckCircle className="w-8 h-8 text-green-400" />
-                  <h2 className="text-xl font-bold text-white">Transaction Completed</h2>
-                </div>
-                <p className="text-gray-300 mb-4">
-                  This transaction has been successfully committed to the blockchain.
-                </p>
-                {transaction.blockchainTxHash && (
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-400">Transaction Hash:</p>
-                    <p className="text-primary-400 font-mono text-xs break-all">
-                      {transaction.blockchainTxHash}
-                    </p>
+              <div className="relative bg-black/50 border-2 border-green-500/40 rounded-2xl p-6 backdrop-blur-xl shadow-2xl bg-green-500/5">
+                <div className="absolute inset-0 bg-gradient-radial from-green-500/20 to-transparent blur-2xl opacity-50" />
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <CheckCircle className="w-8 h-8 text-green-400" />
+                    <h2 className="text-xl font-bold text-white">Transaction Completed</h2>
                   </div>
-                )}
+                  <p className="text-gray-300 mb-4">
+                    This transaction has been successfully committed to the blockchain.
+                  </p>
+                  {transaction.blockchainTxHash && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-gray-400">Transaction Hash:</p>
+                      <p className="text-green-400 font-mono text-xs break-all">
+                        {transaction.blockchainTxHash}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : null}
           </div>
