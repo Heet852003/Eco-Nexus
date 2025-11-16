@@ -50,7 +50,7 @@ export interface SellerQuote {
   sellerName: string
   price: number
   deliveryDays: number
-  status: 'pending' | 'accepted' | 'rejected'
+  status: 'pending' | 'accepted' | 'rejected' | 'negotiating' | 'REJECTED' | 'ACCEPTED'
   createdAt: string
   aiJustification?: string
 }
