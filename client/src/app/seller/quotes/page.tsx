@@ -249,7 +249,7 @@ export default function SellerQuotesPage() {
                         <MessageCircle className="w-4 h-4" />
                         {thread.status === 'OPEN' ? 'Open Chat' : 'Continue Chat'}
                       </button>
-                      {thread.status !== 'CLOSED' && thread.quote && thread.quote.status !== 'ACCEPTED' && (
+                      {thread.status !== 'CLOSED' && thread.quote && (
                         <button
                           onClick={() => setEditingQuote(thread.quoteId)}
                           className="w-full flex items-center justify-center gap-2 bg-black/40 border-2 border-green-500/40 hover:border-green-500/60 text-white py-2 rounded-lg font-semibold transition"
