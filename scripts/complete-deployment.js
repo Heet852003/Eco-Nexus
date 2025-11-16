@@ -1,122 +1,100 @@
 #!/usr/bin/env node
 /**
  * Complete Automated Deployment
- * Uses provided tokens to deploy everything
  */
 
 import { execSync } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Your tokens
 const RAILWAY_TOKEN = 'f2023a5f-23f4-4ce2-8ba3-1527c5be3fb9';
 const VERCEL_TOKEN = 'fAgL0slFangI7CmWcMA80kLt';
-const OPENROUTER_API_KEY = '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';
 const MONGODB_URI = 'mongodb+srv://mehtaheet5_db_user:cM9QnVjfmrqMSuni@cluster0.ohekgyn.mongodb.net/eco-nexus?retryWrites=true&w=majority';
 const JWT_SECRET = 'mBgMH4SuRscMJP+mXlMpMcHavxvuWpiXWnUXibUO3d0=';
+const OPENROUTER_API_KEY = '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';
+const FRONTEND_URL = 'https://client-693wg8yxg-heet-mehtas-projects.vercel.app';
 
-console.log('🚀 Complete Automated Deployment\n');
+console.log('🚀 COMPLETE DEPLOYMENT AUTOMATION\n');
+console.log('='.repeat(50));
+console.log('Step 1: Verifying Frontend Deployment...\n');
 
-function exec(command, options = {}) {
-  try {
-    const result = execSync(command, { 
-      encoding: 'utf-8', 
-      stdio: options.stdio || 'pipe',
-      shell: true,
-      ...options 
-    });
-    return { success: true, stdout: result };
-  } catch (error) {
-    return { 
-      success: false, 
-      error: error.message,
-      stdout: error.stdout?.toString() || '',
-      stderr: error.stderr?.toString() || ''
-    };
-  }
-}
-
-// Install Railway CLI if needed
-console.log('📦 Installing Railway CLI...');
-if (!exec('railway --version').success) {
-  if (process.platform === 'win32') {
-    exec('powershell -Command "iwr https://railway.app/install.sh -useb | iex"', { stdio: 'inherit' });
-  } else {
-    exec('curl -fsSL https://railway.app/install.sh | sh', { stdio: 'inherit' });
-  }
-}
-
-// Install Vercel CLI if needed
-console.log('📦 Installing Vercel CLI...');
-if (!exec('vercel --version').success) {
-  exec('npm install -g vercel', { stdio: 'inherit' });
-}
-
-// Deploy Backend to Railway
-console.log('\n🚂 Deploying Backend to Railway...');
 try {
-  process.chdir(path.join(__dirname, '..', 'server'));
-  
-  // Login
-  console.log('Logging in to Railway...');
-  exec(`railway login --token ${RAILWAY_TOKEN}`, { stdio: 'inherit' });
-  
-  // Initialize project if needed
-  const status = exec('railway status', { stdio: 'pipe' });
-  if (!status.success) {
-    console.log('Initializing Railway project...');
-    exec('railway init', { stdio: 'inherit' });
-  }
-  
-  // Set environment variables
-  console.log('Setting environment variables...');
-  const envVars = {
-    NODE_ENV: 'production',
-    PORT: '3001',
-    MONGODB_URI: MONGODB_URI,
-    JWT_SECRET: JWT_SECRET,
-    OPENROUTER_API_KEY: OPENROUTER_API_KEY,
-    OPENROUTER_API_URL: 'https://openrouter.ai/api/v1/chat/completions',
-    LLM_MODEL: 'meta-llama/llama-3.2-3b-instruct:free',
-    SOLANA_RPC_URL: 'https://api.devnet.solana.com',
-    CORS_ORIGINS: 'https://your-app.vercel.app'
-  };
-  
-  for (const [key, value] of Object.entries(envVars)) {
-    exec(`railway variables set ${key}="${value.replace(/"/g, '\\"')}"`, { stdio: 'pipe' });
-  }
-  
-  // Deploy
-  console.log('Deploying...');
-  exec('railway up', { stdio: 'inherit' });
-  
-  console.log('✅ Backend deployed to Railway!');
-  
-} catch (error) {
-  console.error('❌ Railway deployment failed:', error.message);
+  // Check Vercel deployment
+  const vercelStatus = execSync(`vercel ls --token ${VERCEL_TOKEN} --yes`, { 
+    encoding: 'utf-8',
+    cwd: 'client'
+  });
+  console.log('✅ Frontend Status:');
+  console.log(vercelStatus.split('\n').slice(0, 5).join('\n'));
+  console.log('\n✅ Frontend is deployed!\n');
+} catch (e) {
+  console.log('⚠️  Could not verify Vercel status, but deployment should be live\n');
 }
 
-// Deploy Frontend to Vercel
-console.log('\n▲ Deploying Frontend to Vercel...');
-try {
-  process.chdir(path.join(__dirname, '..', 'client'));
-  
-  // Set token
-  process.env.VERCEL_TOKEN = VERCEL_TOKEN;
-  
-  // Deploy
-  console.log('Deploying to Vercel...');
-  exec(`vercel --prod --token ${VERCEL_TOKEN} --yes`, { stdio: 'inherit' });
-  
-  console.log('✅ Frontend deployed to Vercel!');
-  
-} catch (error) {
-  console.error('❌ Vercel deployment failed:', error.message);
-}
+console.log('='.repeat(50));
+console.log('Step 2: Setting up Railway Backend...\n');
 
-console.log('\n✅ Deployment complete!');
-console.log('Check your Railway and Vercel dashboards for URLs.');
+// Create Railway environment file
+const railwayEnv = `NODE_ENV=production
+PORT=3001
+MONGODB_URI=${MONGODB_URI}
+JWT_SECRET=${JWT_SECRET}
+OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+OPENROUTER_API_URL=https://openrouter.ai/api/v1/chat/completions
+LLM_MODEL=meta-llama/llama-3.2-3b-instruct:free
+SOLANA_RPC_URL=https://api.devnet.solana.com
+CORS_ORIGINS=${FRONTEND_URL}
+`;
 
+fs.writeFileSync('server/.env.railway', railwayEnv);
+console.log('✅ Created Railway environment file\n');
+
+console.log('='.repeat(50));
+console.log('Step 3: Railway Deployment Instructions\n');
+
+console.log(`
+Since Railway requires web interface for first deployment, follow these steps:
+
+1. Go to: https://railway.app/new
+2. Click: "Deploy from GitHub repo"
+3. Select:
+   - Repository: Heet852003/Eco-Nexus
+   - Branch: ui-3
+4. After project loads:
+   - Click on the service
+   - Settings → Root Directory: server
+5. Variables tab → Copy-paste these variables:
+
+${railwayEnv}
+
+6. Wait 1-2 minutes for deployment
+7. Copy Railway URL from Settings → Domains
+`);
+
+console.log('='.repeat(50));
+console.log('Step 4: Connecting Frontend to Backend\n');
+
+console.log(`
+After you get your Railway URL:
+
+1. Go to: https://vercel.com/heet-mehtas-projects/client/settings/environment-variables
+2. Add variable:
+   - Name: NEXT_PUBLIC_API_URL
+   - Value: https://your-railway-url.railway.app
+3. Save (Vercel will auto-redeploy)
+`);
+
+console.log('='.repeat(50));
+console.log('Step 5: Final Configuration\n');
+
+console.log(`
+1. Go back to Railway
+2. Variables → Update CORS_ORIGINS with your final Vercel production URL
+3. Railway will auto-redeploy
+`);
+
+console.log('='.repeat(50));
+console.log('\n✅ DEPLOYMENT SUMMARY\n');
+console.log(`Frontend URL: ${FRONTEND_URL}`);
+console.log('Backend URL: https://your-railway-url.railway.app (after Railway deployment)');
+console.log('\n📋 All environment variables are ready in server/.env.railway');
+console.log('\n🎉 Your website will be fully live after Railway deployment!\n');
