@@ -8,6 +8,7 @@ import { ChatMessage } from '../models/ChatMessage.js'
 import { BuyerRequest } from '../models/BuyerRequest.js'
 import { SellerQuote } from '../models/SellerQuote.js'
 import { User } from '../models/User.js'
+import { Transaction } from '../models/Transaction.js'
 import { getNegotiationHints as aiGetNegotiationHints, callLLM } from '../services/aiService.js'
 import { analyzeNegotiationPosition, generateJustification, checkSettlement, extractPriceFromMessage } from '../services/negotiationEngine.js'
 
@@ -463,9 +464,10 @@ export async function triggerAgentNegotiation(req, res) {
     // If agreement detected, generate confirmation messages from both agents
     let buyerConfirmation = null
     let sellerConfirmation = null
+    let transaction = null
     
     if (agreementDetected) {
-      console.log('🤝 Agreement detected! Generating confirmation messages...')
+      console.log('🤝 Agreement detected! Generating confirmation messages and completing deal...')
       
       try {
         // Generate buyer confirmation
@@ -494,8 +496,48 @@ export async function triggerAgentNegotiation(req, res) {
         )
         
         console.log('✅ Agreement confirmation messages generated')
+        
+        // Automatically create transaction and complete the deal
+        const finalPrice = settlement.finalPrice || settlement.buyerPrice || settlement.sellerPrice || quote.sellerPrice
+        
+        console.log(`💰 Creating transaction with final price: $${finalPrice.toFixed(2)}`)
+        
+        // Create transaction
+        transaction = await Transaction.create({
+          requestId: thread.requestId,
+          quoteId: thread.quoteId,
+          buyerId: thread.buyerId,
+          sellerId: thread.sellerId,
+          productId: request.productId,
+          productName: request.productName,
+          quantity: request.quantity,
+          price: finalPrice,
+          finalPrice: finalPrice,
+          status: 'PENDING' // Will be committed to blockchain later
+        })
+        
+        // Update request and quote statuses
+        await BuyerRequest.updateStatus(thread.requestId, 'COMPLETED')
+        await SellerQuote.updateStatus(thread.quoteId, 'ACCEPTED')
+        
+        // Update thread status to CLOSED
+        await NegotiationThread.closeThread(threadId)
+        
+        // Reject other quotes for this request
+        const otherQuotes = await SellerQuote.findByRequestId(thread.requestId)
+        for (const q of otherQuotes) {
+          if (q.id !== thread.quoteId) {
+            await SellerQuote.updateStatus(q.id, 'REJECTED')
+          }
+        }
+        
+        console.log(`✅ Deal completed! Transaction created: ${transaction.id}`)
+        console.log(`📋 Request ${thread.requestId} marked as COMPLETED`)
+        console.log(`📋 Quote ${thread.quoteId} marked as ACCEPTED`)
+        console.log(`📋 Thread ${threadId} marked as CLOSED`)
+        
       } catch (confirmationError) {
-        console.error('❌ Failed to generate confirmation messages:', confirmationError)
+        console.error('❌ Failed to generate confirmation messages or create transaction:', confirmationError)
         // Continue even if confirmation fails
       }
     }
@@ -507,6 +549,7 @@ export async function triggerAgentNegotiation(req, res) {
       sellerConfirmation,
       agreementReached: agreementDetected,
       settlement: settlement,
+      transaction: transaction, // Include transaction if deal was completed
       shouldContinue: !agreementDetected // Continue if no agreement
     })
   } catch (error) {

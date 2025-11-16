@@ -34,8 +34,28 @@ const io = new Server(httpServer, {
 const PORT = process.env.PORT || 3001
 
 // Middleware
+// CORS configuration - allow multiple origins for production
+const corsOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:3000']
+
 app.use(cors({
-  origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true)
+    
+    // Allow if origin is in whitelist
+    if (corsOrigins.includes(origin) || corsOrigins.includes('*')) {
+      callback(null, true)
+    } else {
+      // In production, be strict; in development, allow localhost
+      if (process.env.NODE_ENV === 'production') {
+        callback(new Error('Not allowed by CORS'))
+      } else {
+        callback(null, true)
+      }
+    }
+  },
   credentials: true
 }))
 app.use(express.json())

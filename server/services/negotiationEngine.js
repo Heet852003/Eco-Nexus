@@ -389,6 +389,7 @@ export function generateJustification(agentType, offerPrice, analysis, request, 
 
 /**
  * Check if settlement is reached
+ * Also checks if one party's demand is met (buyer's maxPrice or seller's minimum)
  */
 export function checkSettlement(buyerMessage, sellerMessage, analysis) {
   // Check for explicit agreement keywords
@@ -409,6 +410,26 @@ export function checkSettlement(buyerMessage, sellerMessage, analysis) {
   const buyerPrice = extractPriceFromMessage(buyerMessage)
   const sellerPrice = extractPriceFromMessage(sellerMessage)
   
+  // Check if buyer's demand is met (seller's price is within buyer's budget)
+  let buyerDemandMet = false
+  if (sellerPrice && analysis && analysis.maxBudget) {
+    // Buyer accepts if seller's price is within their budget
+    buyerDemandMet = sellerPrice <= analysis.maxBudget
+    if (buyerDemandMet) {
+      console.log(`✅ Buyer's demand met: Seller's price $${sellerPrice.toFixed(2)} is within buyer's budget of $${analysis.maxBudget.toFixed(2)}`)
+    }
+  }
+  
+  // Check if seller's demand is met (buyer's price is at or above seller's minimum)
+  let sellerDemandMet = false
+  if (buyerPrice && analysis && analysis.sellerMinPrice) {
+    // Seller accepts if buyer's price is at or above their minimum
+    sellerDemandMet = buyerPrice >= analysis.sellerMinPrice
+    if (sellerDemandMet) {
+      console.log(`✅ Seller's demand met: Buyer's price $${buyerPrice.toFixed(2)} is at or above seller's minimum of $${analysis.sellerMinPrice.toFixed(2)}`)
+    }
+  }
+  
   // Check price convergence
   let priceSettlement = false
   if (buyerPrice && sellerPrice) {
@@ -425,16 +446,39 @@ export function checkSettlement(buyerMessage, sellerMessage, analysis) {
   // Check if we're very close to fair price
   const nearFairPrice = analysis && analysis.progress && analysis.progress.convergence > 85
   
-  const isSettled = explicitAgreement || (priceSettlement && nearFairPrice)
+  // Settlement is reached if:
+  // 1. Both parties explicitly agree
+  // 2. Prices converge AND near fair price
+  // 3. Buyer's demand is met (seller's price within budget)
+  // 4. Seller's demand is met (buyer's price at/above minimum)
+  const isSettled = explicitAgreement || 
+                    (priceSettlement && nearFairPrice) ||
+                    buyerDemandMet ||
+                    sellerDemandMet
+  
+  // Determine settlement reason
+  let reason = 'no_settlement'
+  if (explicitAgreement) {
+    reason = 'explicit_agreement'
+  } else if (buyerDemandMet) {
+    reason = 'buyer_demand_met'
+  } else if (sellerDemandMet) {
+    reason = 'seller_demand_met'
+  } else if (priceSettlement && nearFairPrice) {
+    reason = 'price_convergence'
+  } else if (priceSettlement) {
+    reason = 'price_close'
+  }
   
   return {
     settled: isSettled,
-    reason: explicitAgreement ? 'explicit_agreement' : 
-            priceSettlement ? 'price_convergence' : 
-            'no_settlement',
+    reason: reason,
     buyerPrice,
     sellerPrice,
-    priceDiff: buyerPrice && sellerPrice ? Math.abs(buyerPrice - sellerPrice) : null
+    priceDiff: buyerPrice && sellerPrice ? Math.abs(buyerPrice - sellerPrice) : null,
+    buyerDemandMet,
+    sellerDemandMet,
+    finalPrice: buyerPrice || sellerPrice || null // Use whichever price is available
   }
 }
 
