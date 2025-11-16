@@ -74,9 +74,41 @@ export async function commitTransaction(transactionData) {
     const payer = getPayerKeypair()
     console.log('✅ Payer keypair loaded:', payer.publicKey.toString())
     
+    // Check balance and airdrop if needed (devnet only)
+    try {
+      const balance = await connection.getBalance(payer.publicKey)
+      console.log(`💰 Account balance: ${balance / LAMPORTS_PER_SOL} SOL`)
+      
+      // If balance is too low, request airdrop (devnet only)
+      if (balance < 0.01 * LAMPORTS_PER_SOL && SOLANA_RPC_URL.includes('devnet')) {
+        console.log('💧 Requesting airdrop for devnet account...')
+        const airdropSignature = await connection.requestAirdrop(
+          payer.publicKey,
+          1 * LAMPORTS_PER_SOL // Request 1 SOL
+        )
+        await connection.confirmTransaction(airdropSignature, 'confirmed')
+        console.log('✅ Airdrop received')
+      }
+    } catch (balanceError) {
+      console.warn('⚠️ Balance check/airdrop failed:', balanceError.message)
+      // Continue anyway - might work if account has funds
+    }
+    
     // Create a simple transaction record on blockchain (without token minting)
-    // For now, we'll just create a transaction signature for record-keeping
     const transaction = new Transaction()
+    
+    // Fetch recent blockhash (required for transaction)
+    let recentBlockhash, lastValidBlockHeight
+    try {
+      const { blockhash, lastValidBlockHeight: lvbh } = await connection.getLatestBlockhash('confirmed')
+      recentBlockhash = blockhash
+      lastValidBlockHeight = lvbh
+      transaction.recentBlockhash = recentBlockhash
+      console.log('✅ Recent blockhash fetched:', recentBlockhash.slice(0, 8) + '...')
+    } catch (error) {
+      console.error('❌ Failed to fetch recent blockhash:', error)
+      throw new Error(`Failed to fetch recent blockhash: ${error.message}`)
+    }
     
     // Add a simple instruction to record the transaction
     transaction.add(
@@ -90,7 +122,14 @@ export async function commitTransaction(transactionData) {
     // Sign and send transaction
     let signature
     try {
-      signature = await connection.sendTransaction(transaction, [payer])
+      // Sign the transaction
+      transaction.sign(payer)
+      
+      // Send transaction
+      signature = await connection.sendRawTransaction(transaction.serialize(), {
+        skipPreflight: false,
+        maxRetries: 3
+      })
       console.log('✅ Transaction sent:', signature)
     } catch (error) {
       console.error('❌ Failed to send transaction:', error)
@@ -99,8 +138,12 @@ export async function commitTransaction(transactionData) {
 
     // Wait for confirmation
     try {
-      await connection.confirmTransaction(signature, 'confirmed')
-      console.log('✅ Transaction confirmed on blockchain')
+      const confirmation = await connection.confirmTransaction({
+        signature,
+        blockhash: recentBlockhash,
+        lastValidBlockHeight,
+      }, 'confirmed')
+      console.log('✅ Transaction confirmed on blockchain:', confirmation)
     } catch (error) {
       console.error('⚠️ Transaction sent but confirmation failed:', error)
       // Continue anyway - transaction might still be processing

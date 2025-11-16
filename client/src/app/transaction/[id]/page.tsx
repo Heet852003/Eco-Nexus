@@ -75,7 +75,16 @@ export default function TransactionDetailPage() {
       }
     } catch (error: any) {
       console.error('❌ Blockchain commit error:', error)
-      toast.error(error.response?.data?.error || 'Failed to commit to blockchain')
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.details || 
+                          error.message || 
+                          'Failed to commit to blockchain'
+      toast.error(errorMessage)
+      
+      // Log full error details for debugging
+      if (error.response?.data) {
+        console.error('Error details:', error.response.data)
+      }
     } finally {
       setCommitting(false)
     }

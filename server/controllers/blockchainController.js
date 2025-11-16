@@ -56,9 +56,11 @@ export async function commitTransactionToBlockchain(req, res) {
       console.log('✅ Blockchain commit successful:', blockchainResult.signature)
     } catch (blockchainError) {
       console.error('❌ Blockchain commit failed:', blockchainError)
+      console.error('Error stack:', blockchainError.stack)
       return res.status(500).json({ 
         error: 'Failed to commit to blockchain',
-        details: blockchainError.message 
+        details: blockchainError.message || 'Unknown blockchain error',
+        fullError: process.env.NODE_ENV === 'development' ? blockchainError.toString() : undefined
       })
     }
 
