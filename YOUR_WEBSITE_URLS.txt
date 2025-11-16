@@ -1,0 +1,15 @@
+🚀 Your Website URLs
+
+Frontend (Vercel):
+  https://https://client-68kqfphyb-heet-mehtas-projects.vercel.app
+
+Backend (Railway):
+  Deploy to Railway to get URL
+
+Next Steps:
+1. Go to https://railway.app
+2. Deploy backend (see DEPLOY_FINAL.md)
+3. Get Railway URL
+4. Update Vercel: NEXT_PUBLIC_API_URL
+5. Update Railway: CORS_ORIGINS
+6. Your website will be fully live!
