@@ -9,6 +9,7 @@ import { BuyerRequest } from '../models/BuyerRequest.js'
 import { SellerQuote } from '../models/SellerQuote.js'
 import { User } from '../models/User.js'
 import { getNegotiationHints as aiGetNegotiationHints, callLLM } from '../services/aiService.js'
+import { analyzeNegotiationPosition, generateJustification, checkSettlement } from '../services/negotiationEngine.js'
 
 /**
  * Create a negotiation thread
@@ -409,10 +410,20 @@ export async function triggerAgentNegotiation(req, res) {
       throw new Error(`Failed to generate seller agent message: ${sellerError.message}`)
     }
 
-    // Check if agents have reached an agreement
-    const agreementDetected = detectAgreement(buyerAgentMessage.content, sellerAgentMessage.content, request, quote)
+    // Use negotiation engine to check for settlement
+    const buyerAnalysis = analyzeNegotiationPosition('BUYER', request, quote, [...chatHistory, buyerAgentMessage, sellerAgentMessage], competingQuotes, { user: thread.buyerGuidelines, other: thread.sellerGuidelines })
+    const sellerAnalysis = analyzeNegotiationPosition('SELLER', request, quote, [...chatHistory, buyerAgentMessage, sellerAgentMessage], competingQuotes, { user: thread.sellerGuidelines, other: thread.buyerGuidelines })
+    
+    const settlement = checkSettlement(buyerAgentMessage.content, sellerAgentMessage.content, buyerAnalysis)
+    const agreementDetected = settlement.settled
     
     console.log(`✅ Agent negotiation round completed. Agreement: ${agreementDetected ? 'YES' : 'NO'}`)
+    if (agreementDetected) {
+      console.log(`🤝 Settlement reason: ${settlement.reason}`)
+      if (settlement.priceDiff !== null) {
+        console.log(`💰 Final price difference: $${settlement.priceDiff.toFixed(2)}`)
+      }
+    }
     
     // If agreement detected, generate confirmation messages from both agents
     let buyerConfirmation = null
@@ -460,6 +471,7 @@ export async function triggerAgentNegotiation(req, res) {
       buyerConfirmation,
       sellerConfirmation,
       agreementReached: agreementDetected,
+      settlement: settlement,
       shouldContinue: !agreementDetected // Continue if no agreement
     })
   } catch (error) {
@@ -530,7 +542,7 @@ function detectAgreement(buyerMessage, sellerMessage, request, quote) {
 }
 
 /**
- * Generate agent message for buyer or seller
+ * Generate agent message for buyer or seller - REALISTIC HUMAN-LIKE NEGOTIATION
  */
 async function generateAgentMessage(threadId, agentType, userId, request, quote, chatHistory, competingQuotes = [], isContinuation = false, userGuidelines = null, otherPartyGuidelines = null, otherAgentMessage = null) {
   const isBuyer = agentType === 'BUYER'
@@ -543,103 +555,154 @@ async function generateAgentMessage(threadId, agentType, userId, request, quote,
     
     const userName = user.name || agentType
 
-    // Build profit-focused prompt based on agent type
+    // Use negotiation engine to analyze position
+    const analysis = analyzeNegotiationPosition(
+      agentType,
+      request,
+      quote,
+      chatHistory,
+      competingQuotes,
+      { user: userGuidelines, other: otherPartyGuidelines }
+    )
+
+    // Calculate reasonable offer based on analysis
+    const suggestedOffer = calculateReasonableOffer(analysis, isBuyer)
+    
+    // Generate justifications for the offer
+    const justifications = generateJustification(
+      agentType,
+      suggestedOffer,
+      analysis,
+      request,
+      quote
+    )
+
+    // Build context
     const competingQuotesInfo = competingQuotes.length > 0 
       ? `\nCOMPETING QUOTES (for reference):\n${competingQuotes.slice(0, 3).map(q => `- $${q.sellerPrice} (${q.deliveryDays} days)`).join('\n')}`
       : ''
     
-    // Calculate price bounds
-    const minPrice = request.maxPrice * 0.5 // Buyer shouldn't go below 50% of max budget
-    const maxPrice = quote.sellerPrice * 1.5 // Seller shouldn't go above 150% of original
-    
-    const profitGoal = isBuyer
-      ? `YOUR GOAL: Maximize buyer profit by negotiating the LOWEST possible price. Your buyer's maximum budget is $${request.maxPrice}. DO NOT go below $${minPrice.toFixed(2)}. Try to get the price as low as possible while staying within budget. Also negotiate for faster delivery and better terms.`
-      : `YOUR GOAL: Maximize seller profit by negotiating the HIGHEST possible price. The current quote is $${quote.sellerPrice}. DO NOT go above $${maxPrice.toFixed(2)}. Try to maintain or increase this price while offering reasonable delivery terms. Protect your profit margins.`
-    
-    // Get round number from agent messages
-    const agentMessages = chatHistory.filter(m => m.senderType?.startsWith('AGENT_'))
-    const currentRound = Math.floor(agentMessages.length / 2) + 1
-    const maxRounds = 3
-    
-    // Check for repetitive messages - get last 3 agent messages of this agent type
-    const myPreviousMessages = chatHistory
-      .filter(m => m.senderType === `AGENT_${agentType}`)
-      .slice(-3)
-      .map(m => m.content.toLowerCase())
-    
-    // Detect if we're repeating ourselves
-    const repetitionWarning = myPreviousMessages.length >= 2 
-      ? `\n⚠️ IMPORTANT: Avoid repeating previous messages. Your last messages were similar. Make a NEW, DIFFERENT offer or response. Do NOT say the same thing again.`
-      : ''
-    
-    const otherAgentResponse = otherAgentMessage 
-      ? `\n\nLATEST MESSAGE FROM ${isBuyer ? 'SELLER' : 'BUYER'} AGENT:\n"${otherAgentMessage.content}"\n\nRespond directly to this message with a NEW offer or counter-offer.`
-      : ''
-    
-    // Build guidelines section - show both your guidelines and the other party's
-    let guidelinesSection = ''
-    if (userGuidelines || otherPartyGuidelines) {
-      guidelinesSection = '\n\n=== NEGOTIATION GUIDELINES ===\n'
-      if (userGuidelines) {
-        guidelinesSection += `\nYOUR GUIDELINES (MUST FOLLOW):\n${userGuidelines}\n`
-      }
-      if (otherPartyGuidelines) {
-        guidelinesSection += `\n${isBuyer ? 'SELLER' : 'BUYER'}'S GUIDELINES (CONSIDER WHEN NEGOTIATING):\n${otherPartyGuidelines}\n`
-        guidelinesSection += `\nIMPORTANT: The other party has specific guidelines above. Consider these when making your offer. Try to find terms that work within both sets of guidelines.\n`
-      }
-      guidelinesSection += '\n=== END GUIDELINES ===\n'
-    }
-    
-    // Get recent messages (last 8 for better context, but avoid repetition)
-    const recentMessages = chatHistory.slice(-8)
+    // Get recent negotiation history
+    const recentMessages = chatHistory.slice(-10)
     const recentMessagesText = recentMessages.length > 0
       ? recentMessages.map(m => `${m.senderName}: ${m.content}`).join('\n')
       : 'No previous messages'
     
-    const prompt = `You are ${userName}, the ${agentType} Negotiation Agent. Your PRIMARY OBJECTIVE is to maximize profit for your ${agentType.toLowerCase()}.
+    // Build guidelines section
+    let guidelinesSection = ''
+    if (userGuidelines || otherPartyGuidelines) {
+      guidelinesSection = '\n\n=== NEGOTIATION GUIDELINES ===\n'
+      if (userGuidelines) {
+        guidelinesSection += `YOUR GUIDELINES:\n${userGuidelines}\n\n`
+      }
+      if (otherPartyGuidelines) {
+        guidelinesSection += `${isBuyer ? 'SELLER' : 'BUYER'}'S GUIDELINES:\n${otherPartyGuidelines}\n\n`
+      }
+      guidelinesSection += 'Consider both sets of guidelines when negotiating.\n'
+      guidelinesSection += '=== END GUIDELINES ===\n'
+    }
+    
+    // Build negotiation status
+    const agentMessages = chatHistory.filter(m => m.senderType?.startsWith('AGENT_'))
+    const currentRound = Math.floor(agentMessages.length / 2) + 1
+    const maxRounds = 5 // Allow more rounds for realistic negotiation
+    
+    let negotiationStatus = ''
+    if (analysis.progress.stage === 'near_settlement') {
+      negotiationStatus = `⚠️ NEGOTIATION STATUS: We are very close to agreement (${analysis.progress.convergence.toFixed(0)}% convergence). This is a good time to make a final reasonable offer to close the deal.`
+    } else if (analysis.progress.stage === 'negotiating') {
+      negotiationStatus = `📊 NEGOTIATION STATUS: Active negotiation in progress (${analysis.progress.convergence.toFixed(0)}% convergence). Continue making reasonable offers.`
+    } else {
+      negotiationStatus = `🔄 NEGOTIATION STATUS: Early stage negotiation. Make a reasonable opening offer.`
+    }
+    
+    // Build strategy guidance
+    const strategyGuidance = analysis.strategy.primary.message
+    const secondaryStrategies = analysis.strategy.secondary.map(s => s.message).join('\n')
+    
+    // Build the other party's last message context
+    const otherAgentContext = otherAgentMessage 
+      ? `\n\nLATEST MESSAGE FROM ${isBuyer ? 'SELLER' : 'BUYER'}:\n"${otherAgentMessage.content}"\n\nYou need to respond to this message.`
+      : ''
+    
+    // Build price context
+    let priceContext = ''
+    if (analysis.lastOffer) {
+      priceContext += `\nYour last offer: $${analysis.lastOffer.price.toFixed(2)}`
+    }
+    if (analysis.otherPartyLastOffer) {
+      priceContext += `\nTheir last offer: $${analysis.otherPartyLastOffer.price.toFixed(2)}`
+    }
+    priceContext += `\nOriginal quote: $${analysis.originalPrice.toFixed(2)}`
+    priceContext += `\nFair market price (estimated): $${analysis.fairMarketPrice.toFixed(2)}`
+    
+    // Build leverage context
+    let leverageContext = ''
+    if (analysis.leverage.hasLeverage) {
+      leverageContext = `\n\nLEVERAGE: ${analysis.leverage.message}`
+    }
+    
+    // Build justifications context
+    const justificationsText = justifications.map(j => 
+      `- ${j.reason} ${j.fairness}`
+    ).join('\n')
+    
+    const prompt = `You are ${userName}, representing the ${isBuyer ? 'buyer' : 'seller'} in a real business negotiation. You are professional, fair, and strategic.
 
-${profitGoal}
+YOUR ROLE:
+${isBuyer 
+  ? `You are the BUYER. Your goal is to get the best value while being fair and reasonable. Your maximum budget is $${request.maxPrice.toFixed(2)}. You should negotiate for a fair price that respects both parties' interests.`
+  : `You are the SELLER. Your goal is to get fair compensation for your product while being reasonable. Your original quote was $${quote.sellerPrice.toFixed(2)}. You should negotiate for a fair price that reflects the value you provide.`
+}
 
-BUYER REQUEST:
+DEAL DETAILS:
 - Product: ${request.productName}
 - Quantity: ${request.quantity}
-- Max Budget: $${request.maxPrice}
-- Desired Carbon Score: ${request.desiredCarbonScore || 'N/A'}
-
-CURRENT QUOTE:
-- Price: $${quote.sellerPrice}
+- Max Budget: $${request.maxPrice.toFixed(2)}
+- Original Quote: $${quote.sellerPrice.toFixed(2)}
+- Delivery: ${quote.deliveryDays} days
 - Carbon Score: ${quote.sellerCarbonScore || 'N/A'}
-- Delivery Days: ${quote.deliveryDays}
 ${competingQuotesInfo}
+${priceContext}
+${leverageContext}
+
 ${guidelinesSection}
-NEGOTIATION STATUS:
-- Current Round: ${currentRound} of ${maxRounds}
-- ${currentRound >= maxRounds ? '⚠️ THIS IS THE FINAL ROUND - Try to reach an agreement now!' : `You have ${maxRounds - currentRound} rounds left. Make progress toward agreement.`}
-${repetitionWarning}
 
-RECENT NEGOTIATION MESSAGES (last 8 messages):
+${negotiationStatus}
+
+NEGOTIATION STRATEGY:
+${strategyGuidance}
+${secondaryStrategies ? `\nAdditional considerations:\n${secondaryStrategies}` : ''}
+
+JUSTIFICATIONS TO CONSIDER:
+${justificationsText}
+
+NEGOTIATION HISTORY:
 ${recentMessagesText}
-${otherAgentResponse}
+${otherAgentContext}
 
-INSTRUCTIONS:
-- Be assertive and profit-focused
-- Use SPECIFIC numbers (prices, delivery days)
-- Make concrete offers or counter-offers
-- ${isBuyer ? `Push for lower prices (but not below $${minPrice.toFixed(2)}) and faster delivery` : `Defend your price (but not above $${maxPrice.toFixed(2)}) and negotiate favorable terms`}
-- CRITICAL: Consider BOTH your guidelines AND the other party's guidelines when making offers
-- CRITICAL: If the other agent's price matches your offer (within $1), you MUST immediately respond with: "I accept! We have a deal at $[price]. Let's proceed."
-- If prices are equal or very close, explicitly state "I agree" or "We have a deal" - don't just imply it
-- If you agree to terms, clearly state "I accept" or "We have a deal" - don't just imply it
-- ${currentRound >= maxRounds ? 'This is the final round - be willing to compromise to reach agreement' : 'Make reasonable progress toward agreement'}
-- AVOID REPETITION: Do NOT repeat what you said before. Make a NEW offer or response.
-- Keep messages to 2-4 sentences, direct and specific
+INSTRUCTIONS FOR YOUR RESPONSE:
+1. Be HUMAN-LIKE: Write naturally, as if you're a real person negotiating. Use conversational but professional language.
+2. Be FAIR: Consider what's fair for both parties, not just your own interests.
+3. Provide JUSTIFICATION: Explain WHY you're making your offer. Reference market conditions, fairness, guidelines, or other factors.
+4. Make a SPECIFIC OFFER: Include a specific price (e.g., "I can offer $X" or "How about $X?").
+5. Show REASONING: Explain your thought process briefly.
+6. Be RESPECTFUL: Acknowledge the other party's position and show willingness to work together.
+7. If close to agreement: Be willing to make a small final move to close the deal.
+8. If far apart: Make a reasonable counter-offer that moves toward the fair market price.
 
-Write your negotiation message:`
+IMPORTANT:
+- If the other party's offer is very close to yours (within 2-3%), consider accepting: "That works for me. We have a deal at $[price]."
+- If you're making progress, acknowledge it: "I appreciate that you moved to $[price]. I can offer $[counter-price]."
+- If you need to stand firm, explain why: "I understand, but $[price] is my best offer because [reason]."
+- Keep your message to 3-5 sentences - be concise but complete.
+
+Write your negotiation message now:`
 
     const messages = [
       {
         role: 'system',
-        content: `You are ${userName}, a professional ${agentType.toLowerCase()} negotiation agent focused on maximizing profit. You are assertive, use specific numbers, and make concrete offers. ${isBuyer ? 'You push for lower prices and better terms.' : 'You defend your prices and negotiate favorable terms.'}`
+        content: `You are ${userName}, a professional ${isBuyer ? 'buyer' : 'seller'} in a business negotiation. You are fair, reasonable, and strategic. You negotiate like a real human would - with reasoning, justification, and respect for the other party. You aim for win-win outcomes.`
       },
       {
         role: 'user',
@@ -647,7 +710,7 @@ Write your negotiation message:`
       }
     ]
 
-    const response = await callLLM(messages, 0.8)
+    const response = await callLLM(messages, 0.7) // Lower temperature for more consistent, realistic responses
     const content = response.trim()
 
     // Create agent message
@@ -664,8 +727,8 @@ Write your negotiation message:`
     console.error(`Failed to generate ${agentType} agent message:`, error)
     // Fallback message
     const fallbackContent = isBuyer
-      ? `I'd like to negotiate the price of $${quote.sellerPrice} and ${quote.deliveryDays}-day delivery. Can we find terms that work for both of us?`
-      : `I'm offering $${quote.sellerPrice} with ${quote.deliveryDays}-day delivery. I'm open to discussing adjustments.`
+      ? `I'd like to discuss the price. Your quote of $${quote.sellerPrice.toFixed(2)} is a bit above my budget. Could we work together to find a price that works for both of us?`
+      : `I understand you're looking for the best value. My quote of $${quote.sellerPrice.toFixed(2)} reflects the quality and sustainability of this product. I'm open to discussing terms that work for both of us.`
     
     return await ChatMessage.create({
       threadId,
@@ -674,6 +737,47 @@ Write your negotiation message:`
       senderName: `${agentType} Agent`,
       content: fallbackContent
     })
+  }
+}
+
+/**
+ * Calculate a reasonable offer based on negotiation analysis
+ */
+function calculateReasonableOffer(analysis, isBuyer) {
+  const { fairMarketPrice, minAcceptablePrice, maxAcceptablePrice, lastOffer, otherPartyLastOffer, progress } = analysis
+  
+  // If we're near settlement, move toward fair price
+  if (progress.stage === 'near_settlement') {
+    if (otherPartyLastOffer) {
+      // Move slightly toward their offer but stay reasonable
+      const myLastPrice = lastOffer?.price || (isBuyer ? maxAcceptablePrice : minAcceptablePrice)
+      const theirPrice = otherPartyLastOffer.price
+      const midpoint = (myLastPrice + theirPrice) / 2
+      return Math.max(minAcceptablePrice, Math.min(maxAcceptablePrice, midpoint))
+    }
+    return fairMarketPrice
+  }
+  
+  // If we have a last offer, make a reasonable move from it
+  if (lastOffer) {
+    const moveAmount = isBuyer 
+      ? Math.min(50, (lastOffer.price - minAcceptablePrice) * 0.1) // Move down 10% or $50 max
+      : Math.min(50, (maxAcceptablePrice - lastOffer.price) * 0.1) // Move up 10% or $50 max
+    
+    const newOffer = isBuyer 
+      ? Math.max(minAcceptablePrice, lastOffer.price - moveAmount)
+      : Math.min(maxAcceptablePrice, lastOffer.price + moveAmount)
+    
+    return newOffer
+  }
+  
+  // Initial offer: start reasonable but with room to negotiate
+  if (isBuyer) {
+    // Start at 80% of fair price or 70% of original, whichever is higher
+    return Math.max(minAcceptablePrice, Math.min(fairMarketPrice * 0.8, analysis.originalPrice * 0.7))
+  } else {
+    // Start at 120% of fair price or 110% of original, whichever is lower
+    return Math.min(maxAcceptablePrice, Math.max(fairMarketPrice * 1.2, analysis.originalPrice * 1.1))
   }
 }
 
