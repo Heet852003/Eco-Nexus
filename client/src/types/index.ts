@@ -29,7 +29,8 @@ export interface BuyerRequest {
   productName: string
   quantity: number
   maxPrice?: number
-  status: 'pending' | 'quoted' | 'negotiating' | 'accepted' | 'completed' | 'cancelled'
+  notes?: string
+  status: 'pending' | 'quoted' | 'negotiating' | 'accepted' | 'completed' | 'cancelled' | 'OPEN' | 'COMPLETED' | 'CLOSED'
   createdAt: string
   updatedAt: string
   aiRecommendation?: AIRecommendation
