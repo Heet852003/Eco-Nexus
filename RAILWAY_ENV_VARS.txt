@@ -1,0 +1,16 @@
+# Railway Environment Variables
+# Copy these to Railway → Your Service → Variables tab
+
+NODE_ENV=production
+PORT=3001
+MONGODB_URI=mongodb+srv://mehtaheet5_db_user:cM9QnVjfmrqMSuni@cluster0.ohekgyn.mongodb.net/eco-nexus?retryWrites=true&w=majority
+JWT_SECRET=[GENERATE WITH: openssl rand -base64 32]
+OPENROUTER_API_KEY=[YOUR_OPENROUTER_API_KEY]
+OPENROUTER_API_URL=https://openrouter.ai/api/v1/chat/completions
+LLM_MODEL=meta-llama/llama-3.2-3b-instruct:free
+SOLANA_RPC_URL=https://api.devnet.solana.com
+CORS_ORIGINS=https://your-app.vercel.app
+
+# Note: Replace [YOUR_OPENROUTER_API_KEY] with your actual key
+# Note: Replace https://your-app.vercel.app with your actual Vercel URL after frontend deployment
+
