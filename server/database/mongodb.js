@@ -97,14 +97,19 @@ export async function connectMongoDB() {
     const maskedUri = finalMongoUri.replace(/:([^:@]+)@/, ':***@')
     console.log(`🔌 Connecting to MongoDB: ${maskedUri}`)
 
+    // Only enable TLS for MongoDB Atlas (mongodb+srv://), not for local MongoDB
+    const isAtlas = finalMongoUri.includes('mongodb+srv://')
+    
     client = new MongoClient(finalMongoUri, {
       // Connection options
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
-      // SSL/TLS options for MongoDB Atlas
-      tls: true,
-      tlsAllowInvalidCertificates: false,
+      // SSL/TLS options - only for MongoDB Atlas
+      ...(isAtlas && {
+        tls: true,
+        tlsAllowInvalidCertificates: false,
+      }),
     })
 
     await client.connect()

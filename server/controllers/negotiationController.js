@@ -73,7 +73,16 @@ export async function createThread(req, res) {
 export async function getThread(req, res) {
   try {
     const { threadId } = req.params
+    
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: 'Authentication required' })
+    }
+    
     const userId = req.user.id
+
+    if (!threadId) {
+      return res.status(400).json({ error: 'Thread ID is required' })
+    }
 
     // Try to find thread by ID first
     let thread = await NegotiationThread.findById(threadId)
@@ -87,21 +96,45 @@ export async function getThread(req, res) {
       return res.status(404).json({ error: 'Thread not found' })
     }
 
+    // Ensure thread has an id property
+    if (!thread.id) {
+      thread.id = thread._id ? thread._id.toString() : threadId
+    }
+
     // Verify user is participant
     if (thread.buyerId !== userId && thread.sellerId !== userId) {
       return res.status(403).json({ error: 'Access denied' })
     }
 
-    // Get messages
-    const messages = await ChatMessage.findByThreadId(thread.id)
+    // Get messages - use thread.id or threadId as fallback
+    const messagesThreadId = thread.id || threadId
+    const messages = await ChatMessage.findByThreadId(messagesThreadId)
+
+    // Clean up thread object - remove _id if present, ensure id is set
+    const cleanThread = {
+      id: thread.id,
+      requestId: thread.requestId,
+      quoteId: thread.quoteId,
+      buyerId: thread.buyerId,
+      sellerId: thread.sellerId,
+      buyerGuidelines: thread.buyerGuidelines || null,
+      sellerGuidelines: thread.sellerGuidelines || null,
+      status: thread.status || 'OPEN',
+      createdAt: thread.createdAt,
+      updatedAt: thread.updatedAt
+    }
 
     res.json({
-      thread,
-      messages
+      thread: cleanThread,
+      messages: messages || []
     })
   } catch (error) {
     console.error('Get thread error:', error)
-    res.status(500).json({ error: 'Failed to fetch thread' })
+    console.error('Error stack:', error.stack)
+    res.status(500).json({ 
+      error: 'Failed to fetch thread',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    })
   }
 }
 
@@ -342,6 +375,7 @@ export async function triggerAgentNegotiation(req, res) {
         competingQuotes,
         isContinuation,
         thread.buyerGuidelines,
+        thread.sellerGuidelines, // Pass seller's guidelines so buyer knows seller's constraints
         lastAgentMessage // Pass the other agent's last message
       )
       console.log('✅ Buyer agent message created:', buyerAgentMessage.id)
@@ -366,6 +400,7 @@ export async function triggerAgentNegotiation(req, res) {
         competingQuotes,
         isContinuation,
         thread.sellerGuidelines,
+        thread.buyerGuidelines, // Pass buyer's guidelines so seller knows buyer's constraints
         buyerAgentMessage // Pass buyer's message to seller
       )
       console.log('✅ Seller agent message created:', sellerAgentMessage.id)
@@ -497,7 +532,7 @@ function detectAgreement(buyerMessage, sellerMessage, request, quote) {
 /**
  * Generate agent message for buyer or seller
  */
-async function generateAgentMessage(threadId, agentType, userId, request, quote, chatHistory, competingQuotes = [], isContinuation = false, userGuidelines = null, otherAgentMessage = null) {
+async function generateAgentMessage(threadId, agentType, userId, request, quote, chatHistory, competingQuotes = [], isContinuation = false, userGuidelines = null, otherPartyGuidelines = null, otherAgentMessage = null) {
   const isBuyer = agentType === 'BUYER'
   
   try {
@@ -526,9 +561,40 @@ async function generateAgentMessage(threadId, agentType, userId, request, quote,
     const currentRound = Math.floor(agentMessages.length / 2) + 1
     const maxRounds = 3
     
-    const otherAgentResponse = otherAgentMessage 
-      ? `\n\nLATEST MESSAGE FROM ${isBuyer ? 'SELLER' : 'BUYER'} AGENT:\n"${otherAgentMessage.content}"\n\nRespond directly to this message.`
+    // Check for repetitive messages - get last 3 agent messages of this agent type
+    const myPreviousMessages = chatHistory
+      .filter(m => m.senderType === `AGENT_${agentType}`)
+      .slice(-3)
+      .map(m => m.content.toLowerCase())
+    
+    // Detect if we're repeating ourselves
+    const repetitionWarning = myPreviousMessages.length >= 2 
+      ? `\n⚠️ IMPORTANT: Avoid repeating previous messages. Your last messages were similar. Make a NEW, DIFFERENT offer or response. Do NOT say the same thing again.`
       : ''
+    
+    const otherAgentResponse = otherAgentMessage 
+      ? `\n\nLATEST MESSAGE FROM ${isBuyer ? 'SELLER' : 'BUYER'} AGENT:\n"${otherAgentMessage.content}"\n\nRespond directly to this message with a NEW offer or counter-offer.`
+      : ''
+    
+    // Build guidelines section - show both your guidelines and the other party's
+    let guidelinesSection = ''
+    if (userGuidelines || otherPartyGuidelines) {
+      guidelinesSection = '\n\n=== NEGOTIATION GUIDELINES ===\n'
+      if (userGuidelines) {
+        guidelinesSection += `\nYOUR GUIDELINES (MUST FOLLOW):\n${userGuidelines}\n`
+      }
+      if (otherPartyGuidelines) {
+        guidelinesSection += `\n${isBuyer ? 'SELLER' : 'BUYER'}'S GUIDELINES (CONSIDER WHEN NEGOTIATING):\n${otherPartyGuidelines}\n`
+        guidelinesSection += `\nIMPORTANT: The other party has specific guidelines above. Consider these when making your offer. Try to find terms that work within both sets of guidelines.\n`
+      }
+      guidelinesSection += '\n=== END GUIDELINES ===\n'
+    }
+    
+    // Get recent messages (last 8 for better context, but avoid repetition)
+    const recentMessages = chatHistory.slice(-8)
+    const recentMessagesText = recentMessages.length > 0
+      ? recentMessages.map(m => `${m.senderName}: ${m.content}`).join('\n')
+      : 'No previous messages'
     
     const prompt = `You are ${userName}, the ${agentType} Negotiation Agent. Your PRIMARY OBJECTIVE is to maximize profit for your ${agentType.toLowerCase()}.
 
@@ -545,15 +611,14 @@ CURRENT QUOTE:
 - Carbon Score: ${quote.sellerCarbonScore || 'N/A'}
 - Delivery Days: ${quote.deliveryDays}
 ${competingQuotesInfo}
-
-${userGuidelines ? `YOUR USER'S ADDITIONAL GUIDELINES: ${userGuidelines}` : ''}
-
+${guidelinesSection}
 NEGOTIATION STATUS:
 - Current Round: ${currentRound} of ${maxRounds}
 - ${currentRound >= maxRounds ? '⚠️ THIS IS THE FINAL ROUND - Try to reach an agreement now!' : `You have ${maxRounds - currentRound} rounds left. Make progress toward agreement.`}
+${repetitionWarning}
 
-RECENT NEGOTIATION MESSAGES (last 6 messages):
-${chatHistory.slice(-6).map(m => `${m.senderName}: ${m.content}`).join('\n') || 'No previous messages'}
+RECENT NEGOTIATION MESSAGES (last 8 messages):
+${recentMessagesText}
 ${otherAgentResponse}
 
 INSTRUCTIONS:
@@ -561,10 +626,12 @@ INSTRUCTIONS:
 - Use SPECIFIC numbers (prices, delivery days)
 - Make concrete offers or counter-offers
 - ${isBuyer ? `Push for lower prices (but not below $${minPrice.toFixed(2)}) and faster delivery` : `Defend your price (but not above $${maxPrice.toFixed(2)}) and negotiate favorable terms`}
+- CRITICAL: Consider BOTH your guidelines AND the other party's guidelines when making offers
 - CRITICAL: If the other agent's price matches your offer (within $1), you MUST immediately respond with: "I accept! We have a deal at $[price]. Let's proceed."
-- If prices are equal or very close, explicitly state "I agree" or "We have a deal"
+- If prices are equal or very close, explicitly state "I agree" or "We have a deal" - don't just imply it
 - If you agree to terms, clearly state "I accept" or "We have a deal" - don't just imply it
 - ${currentRound >= maxRounds ? 'This is the final round - be willing to compromise to reach agreement' : 'Make reasonable progress toward agreement'}
+- AVOID REPETITION: Do NOT repeat what you said before. Make a NEW offer or response.
 - Keep messages to 2-4 sentences, direct and specific
 
 Write your negotiation message:`

@@ -40,8 +40,33 @@ export class ChatMessage {
    * Find messages by thread ID
    */
   static async findByThreadId(threadId) {
+    if (!threadId) {
+      return []
+    }
+    
     const collection = getCollection('chatMessages')
-    const messages = await collection.find({ threadId })
+    
+    // Try to find by string threadId first (most common case)
+    let query = { threadId: threadId }
+    
+    // If threadId looks like an ObjectId, also try converting it
+    // This handles cases where threadId might be stored as ObjectId
+    try {
+      if (typeof threadId === 'string' && threadId.length === 24) {
+        // Try both string and ObjectId formats
+        query = {
+          $or: [
+            { threadId: threadId },
+            { threadId: new ObjectId(threadId) }
+          ]
+        }
+      }
+    } catch (error) {
+      // If ObjectId conversion fails, just use string
+      query = { threadId: threadId }
+    }
+    
+    const messages = await collection.find(query)
       .sort({ timestamp: 1 })
       .toArray()
     return messages.map(m => ({ ...m, id: m._id.toString() }))
