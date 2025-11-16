@@ -24,9 +24,10 @@ function question(query) {
 
 function exec(command, options = {}) {
   try {
-    return execSync(command, { encoding: 'utf-8', stdio: 'pipe', ...options });
+    const result = execSync(command, { encoding: 'utf-8', stdio: 'pipe', ...options });
+    return { success: true, stdout: result, stderr: '' };
   } catch (error) {
-    return { error: error.message, stdout: error.stdout, stderr: error.stderr };
+    return { success: false, error: error.message, stdout: error.stdout?.toString() || '', stderr: error.stderr?.toString() || '' };
   }
 }
 
@@ -36,24 +37,28 @@ console.log('This script will deploy your website automatically!\n');
 // Step 1: Check prerequisites
 console.log('📋 Step 1: Checking prerequisites...\n');
 
-const hasNode = exec('node --version').error === undefined;
-const hasNpm = exec('npm --version').error === undefined;
-const hasGit = exec('git --version').error === undefined;
+const nodeCheck = exec('node --version');
+const npmCheck = exec('npm --version');
+const gitCheck = exec('git --version');
+
+const hasNode = nodeCheck.success;
+const hasNpm = npmCheck.success;
+const hasGit = gitCheck.success;
 
 if (!hasNode || !hasNpm) {
   console.error('❌ Node.js and npm are required. Please install them first.');
   process.exit(1);
 }
 
-console.log('✅ Node.js:', exec('node --version').stdout.trim());
-console.log('✅ npm:', exec('npm --version').stdout.trim());
-console.log('✅ Git:', exec('git --version').stdout.trim());
+console.log('✅ Node.js:', nodeCheck.stdout.trim());
+console.log('✅ npm:', npmCheck.stdout.trim());
+console.log('✅ Git:', gitCheck.stdout.trim());
 
 // Step 2: Install CLI tools if needed
 console.log('\n📦 Step 2: Installing deployment tools...\n');
 
 // Check Railway CLI
-let hasRailway = exec('railway --version').error === undefined;
+let hasRailway = exec('railway --version').success;
 if (!hasRailway) {
   console.log('Installing Railway CLI...');
   try {
@@ -62,7 +67,7 @@ if (!hasRailway) {
     } else {
       exec('curl -fsSL https://railway.app/install.sh | sh', { stdio: 'inherit' });
     }
-    hasRailway = exec('railway --version').error === undefined;
+    hasRailway = exec('railway --version').success;
   } catch (e) {
     console.log('⚠️  Railway CLI installation may have failed. Please install manually:');
     console.log('   Windows: iwr https://railway.app/install.sh -useb | iex');
@@ -71,12 +76,12 @@ if (!hasRailway) {
 }
 
 // Check Vercel CLI
-let hasVercel = exec('vercel --version').error === undefined;
+let hasVercel = exec('vercel --version').success;
 if (!hasVercel) {
   console.log('Installing Vercel CLI...');
   try {
     exec('npm install -g vercel', { stdio: 'inherit' });
-    hasVercel = exec('vercel --version').error === undefined;
+    hasVercel = exec('vercel --version').success;
   } catch (e) {
     console.log('⚠️  Vercel CLI installation may have failed.');
   }
