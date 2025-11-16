@@ -9,7 +9,7 @@ import { BuyerRequest } from '../models/BuyerRequest.js'
 import { SellerQuote } from '../models/SellerQuote.js'
 import { User } from '../models/User.js'
 import { getNegotiationHints as aiGetNegotiationHints, callLLM } from '../services/aiService.js'
-import { analyzeNegotiationPosition, generateJustification, checkSettlement } from '../services/negotiationEngine.js'
+import { analyzeNegotiationPosition, generateJustification, checkSettlement, extractPriceFromMessage } from '../services/negotiationEngine.js'
 
 /**
  * Create a negotiation thread
@@ -366,6 +366,11 @@ export async function triggerAgentNegotiation(req, res) {
     console.log('🤖 Generating buyer agent message...')
     let buyerAgentMessage
     try {
+      // Get the last seller message to pass to buyer
+      const lastSellerMessage = chatHistory
+        .filter(m => m.senderType === 'AGENT_SELLER' || m.senderType?.startsWith('AGENT_SELLER'))
+        .slice(-1)[0]
+      
       buyerAgentMessage = await generateAgentMessage(
         threadId,
         'BUYER',
@@ -377,34 +382,37 @@ export async function triggerAgentNegotiation(req, res) {
         isContinuation,
         thread.buyerGuidelines,
         thread.sellerGuidelines, // Pass seller's guidelines so buyer knows seller's constraints
-        lastAgentMessage // Pass the other agent's last message
+        lastSellerMessage || lastAgentMessage // Pass the seller's last message
       )
       console.log('✅ Buyer agent message created:', buyerAgentMessage.id)
+      console.log('📝 Buyer message preview:', buyerAgentMessage.content.substring(0, 100))
     } catch (buyerError) {
       console.error('❌ Failed to generate buyer agent message:', buyerError)
       throw new Error(`Failed to generate buyer agent message: ${buyerError.message}`)
     }
 
     // Wait a bit, then generate seller agent response
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise(resolve => setTimeout(resolve, 1500))
     
     console.log('🤖 Generating seller agent message...')
     let sellerAgentMessage
     try {
+      // Pass buyer's message to seller - this is CRITICAL for back-and-forth
       sellerAgentMessage = await generateAgentMessage(
         threadId,
         'SELLER',
         thread.sellerId,
         request,
         quote,
-        [...chatHistory, buyerAgentMessage],
+        [...chatHistory, buyerAgentMessage], // Include buyer's new message in history
         competingQuotes,
         isContinuation,
         thread.sellerGuidelines,
         thread.buyerGuidelines, // Pass buyer's guidelines so seller knows buyer's constraints
-        buyerAgentMessage // Pass buyer's message to seller
+        buyerAgentMessage // CRITICAL: Pass buyer's message so seller can respond to it
       )
       console.log('✅ Seller agent message created:', sellerAgentMessage.id)
+      console.log('📝 Seller message preview:', sellerAgentMessage.content.substring(0, 100))
     } catch (sellerError) {
       console.error('❌ Failed to generate seller agent message:', sellerError)
       throw new Error(`Failed to generate seller agent message: ${sellerError.message}`)
@@ -582,11 +590,31 @@ async function generateAgentMessage(threadId, agentType, userId, request, quote,
       ? `\nCOMPETING QUOTES (for reference):\n${competingQuotes.slice(0, 3).map(q => `- $${q.sellerPrice} (${q.deliveryDays} days)`).join('\n')}`
       : ''
     
-    // Get recent negotiation history
-    const recentMessages = chatHistory.slice(-10)
+    // Get recent negotiation history - filter out our own repetitive messages
+    const myPreviousMessages = chatHistory
+      .filter(m => m.senderType === `AGENT_${agentType}` || m.senderType?.startsWith(`AGENT_${agentType}`))
+      .slice(-3)
+      .map(m => m.content.toLowerCase().trim())
+    
+    // Check for repetition - if we've said the same thing 2+ times, force a different approach
+    const isRepeating = myPreviousMessages.length >= 2 && 
+      myPreviousMessages.every(msg => msg === myPreviousMessages[0])
+    
+    const recentMessages = chatHistory.slice(-12) // Get more context
     const recentMessagesText = recentMessages.length > 0
-      ? recentMessages.map(m => `${m.senderName}: ${m.content}`).join('\n')
+      ? recentMessages.map((m, idx) => {
+          const isMyMessage = m.senderType === `AGENT_${agentType}` || m.senderType?.startsWith(`AGENT_${agentType}`)
+          return `${isMyMessage ? '[YOU]' : '[THEM]'} ${m.senderName}: ${m.content}`
+        }).join('\n')
       : 'No previous messages'
+    
+    // Build repetition warning
+    let repetitionWarning = ''
+    if (isRepeating) {
+      repetitionWarning = `\n\n⚠️ CRITICAL: You have repeated the same message "${myPreviousMessages[0].substring(0, 50)}..." multiple times. You MUST make a DIFFERENT response now. Make a specific counter-offer with a NEW price. Do NOT repeat yourself.`
+    } else if (myPreviousMessages.length >= 1) {
+      repetitionWarning = `\n\n⚠️ REMINDER: Your last message was similar. Make sure you're making progress and not repeating yourself.`
+    }
     
     // Build guidelines section
     let guidelinesSection = ''
@@ -620,21 +648,68 @@ async function generateAgentMessage(threadId, agentType, userId, request, quote,
     const strategyGuidance = analysis.strategy.primary.message
     const secondaryStrategies = analysis.strategy.secondary.map(s => s.message).join('\n')
     
-    // Build the other party's last message context
-    const otherAgentContext = otherAgentMessage 
-      ? `\n\nLATEST MESSAGE FROM ${isBuyer ? 'SELLER' : 'BUYER'}:\n"${otherAgentMessage.content}"\n\nYou need to respond to this message.`
-      : ''
+    // Build the other party's last message context - CRITICAL for response
+    let otherAgentContext = ''
+    if (otherAgentMessage) {
+      const theirPrice = extractPriceFromMessage(otherAgentMessage.content)
+      otherAgentContext = `\n\n=== YOU MUST RESPOND TO THIS MESSAGE ===\nLATEST MESSAGE FROM ${isBuyer ? 'SELLER' : 'BUYER'}:\n"${otherAgentMessage.content}"`
+      if (theirPrice) {
+        otherAgentContext += `\n\nThey mentioned a price of $${theirPrice.toFixed(2)}. You MUST respond to this specific offer.`
+        if (suggestedOffer) {
+          const diff = Math.abs(theirPrice - suggestedOffer)
+          const percentDiff = (diff / theirPrice) * 100
+          if (percentDiff < 3) {
+            otherAgentContext += `\n\nTheir offer ($${theirPrice.toFixed(2)}) is very close to your target ($${suggestedOffer.toFixed(2)}). Consider accepting or making a small final counter-offer.`
+          } else {
+            otherAgentContext += `\n\nYou should make a counter-offer. Consider offering around $${suggestedOffer.toFixed(2)}.`
+          }
+        }
+      } else {
+        otherAgentContext += `\n\nThey haven't made a specific price offer yet. You should make a specific offer now.`
+      }
+      otherAgentContext += `\n=== END OF THEIR MESSAGE ===\n`
+    } else {
+      // Get the last message from the other party from chat history
+      const otherPartyMessages = chatHistory.filter(m => {
+        const isOtherParty = isBuyer 
+          ? (m.senderType === 'AGENT_SELLER' || m.senderType?.startsWith('AGENT_SELLER'))
+          : (m.senderType === 'AGENT_BUYER' || m.senderType?.startsWith('AGENT_BUYER'))
+        return isOtherParty
+      })
+      if (otherPartyMessages.length > 0) {
+        const lastOtherMessage = otherPartyMessages[otherPartyMessages.length - 1]
+        const theirPrice = extractPriceFromMessage(lastOtherMessage.content)
+        otherAgentContext = `\n\n=== LAST MESSAGE FROM ${isBuyer ? 'SELLER' : 'BUYER'} ===\n"${lastOtherMessage.content}"`
+        if (theirPrice) {
+          otherAgentContext += `\n\nThey mentioned $${theirPrice.toFixed(2)}. You should respond to this.`
+        }
+        otherAgentContext += `\n=== END ===\n`
+      }
+    }
     
-    // Build price context
-    let priceContext = ''
+    // Build price context - make it very clear what offers have been made
+    let priceContext = '\n=== PRICE HISTORY ===\n'
+    priceContext += `Original quote: $${analysis.originalPrice.toFixed(2)}\n`
+    priceContext += `Fair market price (estimated): $${analysis.fairMarketPrice.toFixed(2)}\n`
     if (analysis.lastOffer) {
-      priceContext += `\nYour last offer: $${analysis.lastOffer.price.toFixed(2)}`
+      priceContext += `Your last offer: $${analysis.lastOffer.price.toFixed(2)}\n`
+    } else {
+      priceContext += `Your last offer: None yet (this is your first offer)\n`
     }
     if (analysis.otherPartyLastOffer) {
-      priceContext += `\nTheir last offer: $${analysis.otherPartyLastOffer.price.toFixed(2)}`
+      priceContext += `Their last offer: $${analysis.otherPartyLastOffer.price.toFixed(2)}\n`
+      const priceDiff = analysis.lastOffer 
+        ? Math.abs(analysis.lastOffer.price - analysis.otherPartyLastOffer.price)
+        : Math.abs(analysis.originalPrice - analysis.otherPartyLastOffer.price)
+      priceContext += `Price difference: $${priceDiff.toFixed(2)}\n`
+    } else {
+      priceContext += `Their last offer: None yet\n`
     }
-    priceContext += `\nOriginal quote: $${analysis.originalPrice.toFixed(2)}`
-    priceContext += `\nFair market price (estimated): $${analysis.fairMarketPrice.toFixed(2)}`
+    priceContext += `=== END PRICE HISTORY ===\n`
+    
+    // Add suggested offer prominently
+    priceContext += `\n💡 SUGGESTED OFFER FOR YOU: $${suggestedOffer.toFixed(2)}\n`
+    priceContext += `This is a reasonable offer based on the fair market price and negotiation progress.\n`
     
     // Build leverage context
     let leverageContext = ''
@@ -681,23 +756,29 @@ NEGOTIATION HISTORY:
 ${recentMessagesText}
 ${otherAgentContext}
 
-INSTRUCTIONS FOR YOUR RESPONSE:
-1. Be HUMAN-LIKE: Write naturally, as if you're a real person negotiating. Use conversational but professional language.
-2. Be FAIR: Consider what's fair for both parties, not just your own interests.
-3. Provide JUSTIFICATION: Explain WHY you're making your offer. Reference market conditions, fairness, guidelines, or other factors.
-4. Make a SPECIFIC OFFER: Include a specific price (e.g., "I can offer $X" or "How about $X?").
-5. Show REASONING: Explain your thought process briefly.
-6. Be RESPECTFUL: Acknowledge the other party's position and show willingness to work together.
-7. If close to agreement: Be willing to make a small final move to close the deal.
-8. If far apart: Make a reasonable counter-offer that moves toward the fair market price.
+CRITICAL INSTRUCTIONS - READ CAREFULLY:
+1. You MUST respond to the other party's last message. Do NOT ignore what they said.
+2. You MUST make a SPECIFIC price offer. Use the suggested offer of $${suggestedOffer.toFixed(2)} as a guide, but you can adjust it slightly.
+3. You MUST NOT repeat your previous messages. If you've said something similar before, say something DIFFERENT now.
+4. Acknowledge what the other party said: "I see you offered $X" or "Thank you for your offer of $X"
+5. Make your counter-offer: "I can offer $${suggestedOffer.toFixed(2)}" or "How about $${suggestedOffer.toFixed(2)}?"
+6. Provide a brief justification: "This is fair because..." or "This works because..."
+7. Be conversational and human-like, not robotic.
 
-IMPORTANT:
-- If the other party's offer is very close to yours (within 2-3%), consider accepting: "That works for me. We have a deal at $[price]."
-- If you're making progress, acknowledge it: "I appreciate that you moved to $[price]. I can offer $[counter-price]."
-- If you need to stand firm, explain why: "I understand, but $[price] is my best offer because [reason]."
-- Keep your message to 3-5 sentences - be concise but complete.
+${repetitionWarning}
 
-Write your negotiation message now:`
+RESPONSE TEMPLATE (adapt this, don't copy exactly):
+- Acknowledge their message: "I appreciate your offer of $[their price]..."
+- Make your counter: "I can offer $${suggestedOffer.toFixed(2)}..."
+- Brief justification: "This is fair because [reason]..."
+- Closing: "What do you think?" or "Does this work for you?"
+
+${analysis.otherPartyLastOffer 
+  ? `THEY JUST OFFERED $${analysis.otherPartyLastOffer.price.toFixed(2)}. You MUST respond to this specific offer with a counter-offer.`
+  : `This is early in the negotiation. Make your opening offer.`
+}
+
+Write your negotiation message now (3-5 sentences, be specific with numbers):`
 
     const messages = [
       {
@@ -711,7 +792,45 @@ Write your negotiation message now:`
     ]
 
     const response = await callLLM(messages, 0.7) // Lower temperature for more consistent, realistic responses
-    const content = response.trim()
+    let content = response.trim()
+    
+    // Validate response - check if it's too generic or repetitive
+    const myLastMessage = chatHistory
+      .filter(m => m.senderType === `AGENT_${agentType}` || m.senderType?.startsWith(`AGENT_${agentType}`))
+      .slice(-1)[0]
+    
+    // Check if response is too similar to last message
+    if (myLastMessage && content.toLowerCase().trim() === myLastMessage.content.toLowerCase().trim()) {
+      console.warn(`⚠️ Agent ${agentType} generated identical message, regenerating...`)
+      // Try once more with stronger instructions
+      const retryPrompt = `${prompt}\n\nCRITICAL: Your previous response was identical to your last message. Generate a COMPLETELY DIFFERENT response with a specific counter-offer.`
+      const retryMessages = [
+        messages[0],
+        { role: 'user', content: retryPrompt }
+      ]
+      const retryResponse = await callLLM(retryMessages, 0.8) // Slightly higher temp for variation
+      content = retryResponse.trim()
+    }
+    
+    // Ensure the response contains a price offer
+    const hasPrice = extractPriceFromMessage(content)
+    if (!hasPrice && suggestedOffer) {
+      // If no price in response, prepend a specific offer
+      const priceOffer = isBuyer
+        ? `I can offer $${suggestedOffer.toFixed(2)}. `
+        : `I'm willing to offer $${suggestedOffer.toFixed(2)}. `
+      content = priceOffer + content
+      console.log(`⚠️ Added price offer to ${agentType} message: $${suggestedOffer.toFixed(2)}`)
+    }
+    
+    // Check if response is too short or generic
+    if (content.length < 50) {
+      const enhancedContent = isBuyer
+        ? `I appreciate your offer. I can offer $${suggestedOffer.toFixed(2)}. This is fair given the market conditions and my budget constraints. What do you think?`
+        : `Thank you for your interest. I can offer $${suggestedOffer.toFixed(2)}. This reflects the quality and value of the product. Does this work for you?`
+      content = enhancedContent
+      console.log(`⚠️ Enhanced ${agentType} message with more detail`)
+    }
 
     // Create agent message
     const agentMessage = await ChatMessage.create({
@@ -722,13 +841,21 @@ Write your negotiation message now:`
       content
     })
 
+    console.log(`✅ ${agentType} agent message created: "${content.substring(0, 100)}..."`)
     return agentMessage
   } catch (error) {
     console.error(`Failed to generate ${agentType} agent message:`, error)
-    // Fallback message
+    console.error('Error details:', error.message)
+    
+    // Better fallback message that includes a specific offer
+    const fallbackOffer = calculateReasonableOffer(
+      analyzeNegotiationPosition(agentType, request, quote, chatHistory, [], { user: null, other: null }),
+      isBuyer
+    )
+    
     const fallbackContent = isBuyer
-      ? `I'd like to discuss the price. Your quote of $${quote.sellerPrice.toFixed(2)} is a bit above my budget. Could we work together to find a price that works for both of us?`
-      : `I understand you're looking for the best value. My quote of $${quote.sellerPrice.toFixed(2)} reflects the quality and sustainability of this product. I'm open to discussing terms that work for both of us.`
+      ? `I understand your quote is $${quote.sellerPrice.toFixed(2)}. Given my budget of $${request.maxPrice.toFixed(2)}, I can offer $${fallbackOffer.toFixed(2)}. This is a fair price that works within my constraints. Can we work with this?`
+      : `I appreciate your interest. My original quote was $${quote.sellerPrice.toFixed(2)}, but I'm willing to negotiate. I can offer $${fallbackOffer.toFixed(2)}. This reflects the value and quality of the product. What do you think?`
     
     return await ChatMessage.create({
       threadId,

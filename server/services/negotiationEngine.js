@@ -83,7 +83,7 @@ function extractOffers(chatHistory, agentType) {
 /**
  * Extract price from message
  */
-function extractPriceFromMessage(message) {
+export function extractPriceFromMessage(message) {
   // Look for $XX.XX or $XX patterns
   const pricePattern = /\$(\d+(?:\.\d{2})?)/g
   const matches = message.match(pricePattern)
