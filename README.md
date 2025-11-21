@@ -2,29 +2,7 @@
 
 A complete Carbon Credit Buy-Sell Marketplace with AI negotiation, blockchain settlement, and analytics.
 
-## 🏗️ Project Structure
 
-```
-├── client/              # Next.js Frontend
-│   ├── src/
-│   │   ├── app/         # Next.js App Router pages
-│   │   ├── components/  # React components
-│   │   ├── hooks/       # Custom React hooks
-│   │   └── lib/         # Utilities and API client
-│   └── package.json
-│
-├── server/              # Express Backend
-│   ├── controllers/     # Route controllers
-│   ├── routes/         # API routes
-│   ├── models/         # Data models
-│   ├── services/       # Business logic services
-│   ├── middleware/     # Express middleware
-│   └── server.js       # Main server file
-│
-└── shared/              # Shared code
-    ├── types/          # TypeScript types
-    └── constants/      # Shared constants
-```
 
 ## 🚀 Quick Start
 
@@ -71,15 +49,6 @@ npm run dev
 - [x] Navbar component
 - [x] Responsive design with TailwindCSS
 
-### 🔄 To Complete
-- [ ] Buyer new request page
-- [ ] Buyer requests list page
-- [ ] Seller requests page
-- [ ] Transaction detail page with chat
-- [ ] Analytics page with charts
-- [ ] Product selector component
-- [ ] Quote cards and tables
-- [ ] Blockchain receipt UI
 
 ## 🔑 Environment Variables
 
@@ -154,15 +123,6 @@ Uses OpenRouter API with Meta Llama 3.2 3B Instruct model and custom Aristotle F
   - Seller ratings
   - Daily summaries
 
-## 🎯 Next Steps
-
-1. Complete remaining frontend pages
-2. Add error boundaries
-3. Implement loading states
-4. Add toast notifications
-5. Create Snowflake schema SQL
-6. Add unit tests
-7. Deploy to production
 
 ## 📝 License
 
