@@ -1,0 +1,83 @@
+/* Eco-Nexus – IoT & SmartHome – Global styles */
+:root {
+  --bg: #0f1419;
+  --bg-card: #1a2332;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #3fb950;
+  --accent-dim: #238636;
+  --border: #30363d;
+  --danger: #f85149;
+  --radius: 12px;
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+#app {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}

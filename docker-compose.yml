@@ -1,0 +1,29 @@
+# Eco-Nexus – IoT & SmartHome | Docker deployment
+# HackNYU 2026 – 3rd Place Sustainability
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./eco_nexus.db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      - VITE_API_URL=
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+

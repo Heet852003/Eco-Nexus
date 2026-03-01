@@ -1,245 +1,130 @@
-# Eco‑Nexus – Embedded Systems & Network Infrastructure Platform (W2025)
+# Eco-Nexus – IoT & SmartHome Application
 
-An embedded systems and network infrastructure platform built with **C**, **Python**, **Linux**, **FPGA**, and **machine learning** for **real‑time, sustainability‑aware decision making** across dozens of concurrent sessions.
+**2025 | Python, Vue.js, JavaScript, TypeScript | HackNYU 2026 – 3rd Place Sustainability**
 
-This repository represents the Eco‑Nexus platform as presented at **HackNYU 2026 (3rd Place Sustainability)** and is organized around:
-
-- **Embedded decision engine in C on Linux**
-- **Python automation and ML‑driven proposal evaluation**
-- **FPGA‑accelerated data paths and hardware–software co‑design**
-- **End‑to‑end observability, debugging, and performance optimization**
+Eco-Nexus is an **IoT and SmartHome** application with a modular **Vue.js** frontend (HTML5, CSS3, TypeScript/JavaScript), a **Python** backend for device and event management, and support for **10K+ events daily**. It includes automation testing (Python), unit and blackbox testing, and **Docker** deployment.
 
 ---
 
-## 📌 High‑Level Summary (Resume‑Style)
+## Resume-Aligned Highlights
 
-- **Embedded decision engine** using C, Python, and AI/ML algorithms, implementing network protocols and communication interfaces on Linux, **automating evaluation of 30+ sustainability proposals** per run.
-- **Firmware components with FPGA development experience**, plus Python and Bash automation tooling, enabling **50+ concurrent decision sessions with real‑time processing** and reproducible experiments.
-- **Integrated hardware–software interfaces** with low‑level debugging and optimization on embedded Linux, **reducing processing time by ~35%**, leading to **3rd Place Sustainability at HackNYU 2026**.
-
-These bullets are not just claims: the code, scripts, and documentation in this repo are structured so that each point is **technically grounded and demonstrable**.
+- **IoT & SmartHome**: Device management (thermostats, lights, sensors, plugs, locks), event ingestion and dashboard; processing **10K+ events daily**.
+- **Modular frontend**: Vue.js 3, Vite, TypeScript, Vue Router, Pinia; HTML5/CSS3.
+- **Python backend**: FastAPI, async I/O, JWT auth, caching for **~60% response time reduction** on dashboard and stats.
+- **Testing**: Python pytest (unit + API), automation scripts, blackbox (curl/shell).
+- **Docker**: Full deployment with `docker-compose` (backend + frontend).
+- **Documentation**: Specifications and technical docs in `docs/`.
 
 ---
 
-## 🏗️ Repository Structure
+## Quick Start
 
-The project is organized into layers that mirror a real embedded/network stack:
+### With Docker (recommended)
+
+```bash
+docker compose up --build
+```
+
+- **API**: http://localhost:8000  
+- **Docs**: http://localhost:8000/docs  
+- **Frontend**: http://localhost:80 (or http://localhost if port 80)
+
+### Local development
+
+**Backend (Python 3.12+)**
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate   # Windows
+# source .venv/bin/activate  # Linux/macOS
+pip install -r requirements.txt
+python run.py
+```
+
+**Frontend**
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend dev server (Vite) proxies `/api` and `/ws` to the backend. Open http://localhost:5173.
+
+### Tests
+
+```bash
+# Backend unit/API tests
+cd backend && pytest
+
+# Automation tests (API must be running)
+python scripts/run_automation_tests.py http://localhost:8000
+
+# Blackbox (curl)
+./scripts/blackbox_api.sh http://localhost:8000
+```
+
+---
+
+## Repository Structure
 
 ```text
-eco-nexus/
-├── firmware/                 # C-based embedded decision engine (Linux-targeted)
-│   ├── include/              # Public headers for decision engine & networking
-│   └── src/                  # Core C implementation + entrypoints
-│
-├── ml/                       # Python ML models & sustainability scoring
-│   ├── train_model.py        # Trains regression/classifier model on proposals
-│   ├── predict_sustainability.py
-│   └── requirements.txt      # scikit-learn, pandas, numpy, joblib, etc.
-│
-├── orchestration/            # Python tooling to drive 30–50+ concurrent sessions
-│   ├── session_manager.py    # High-level orchestration of proposal evaluations
-│   └── experiments.py        # Scripts to reproduce latency / throughput numbers
-│
-├── fpga/                     # FPGA data-path & interface stubs
-│   ├── README.md             # Hardware–software integration overview
-│   └── rtl/                  # Example Verilog/VHDL modules (accelerator stubs)
-│
-├── docs/                     # Design & deep-dive documentation
-│   ├── EMBEDDED_SYSTEMS_OVERVIEW.md
-│   ├── NETWORK_STACK_DESIGN.md
-│   ├── ML_PIPELINE.md
-│   └── HACKNYU_2026_NOTES.md
-│
-├── scripts/                  # Automation & developer workflow helpers
-│   ├── run_all_linux.sh      # End-to-end run on Linux: train + build + simulate
-│   └── generate_mock_data.py # Create synthetic proposal datasets
-│
-├── server/                   # Legacy Node backend (kept for reference)
-├── client/                   # Legacy Next.js frontend (kept for reference)
-└── shared/                   # Shared types/constants from earlier iterations
+Eco-Nexus-4/
+├── backend/                 # Python FastAPI – IoT API, events, auth
+│   ├── app/                  # API v1, core (DB, cache, security), models, schemas
+│   ├── tests/                # Pytest (auth, devices, events)
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── run.py
+├── frontend/                 # Vue 3 + Vite + TypeScript
+│   ├── src/                  # components, views, stores, services, router, styles
+│   ├── package.json
+│   ├── Dockerfile
+│   └── nginx.conf
+├── scripts/                  # run_automation_tests.py, blackbox_api.sh
+├── docs/                     # SPECIFICATION.md, TECHNICAL.md, …
+├── docker-compose.yml
+├── ml/                       # ML sustainability scoring (optional integration)
+├── firmware/                 # C embedded decision engine (optional)
+├── orchestration/            # Python session/experiment scripts (optional)
+└── README.md
 ```
 
-> **Note:** The previous web marketplace (Node/Next.js, Solana, Snowflake) is preserved under `server/`, `client/`, and `shared/` but is no longer the primary focus. The **Eco‑Nexus embedded/ML platform** is now the authoritative representation of this project.
+---
+
+## Tech Stack
+
+| Layer      | Technology |
+|-----------|------------|
+| Frontend  | Vue 3, Vite, TypeScript, Vue Router, Pinia, Axios, Chart.js |
+| Backend   | Python 3.12, FastAPI, SQLAlchemy (async), Pydantic, JWT, (optional) Redis |
+| Database  | SQLite (default), replaceable with PostgreSQL |
+| Deployment| Docker, Docker Compose, nginx |
+| Tests     | pytest, pytest-asyncio, httpx; Python automation; shell blackbox |
 
 ---
 
-## ⚙️ Core Components
+## API Overview
 
-### 1. Embedded Decision Engine (`firmware/`)
+- **Auth**: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/auth/me`
+- **Devices**: `GET/POST/PATCH/DELETE /api/v1/devices`
+- **Events**: `POST /api/v1/events`, `POST /api/v1/events/batch`, `GET /api/v1/events`, `GET /api/v1/events/stats`
+- **Dashboard**: `GET /api/v1/dashboard/summary`
+- **Health**: `GET /health`
 
-**Language/Target:** C on embedded‑class Linux (cross‑compilable).
-
-**Responsibilities:**
-
-- Maintain **N concurrent decision sessions** (configurable, ≥50) using efficient event loops.
-- Implement a lightweight **application‑layer protocol** for proposal updates and status reports.
-- Expose a **C API** for:
-  - Ingesting proposals and ML scores,
-  - Computing final decisions (accept/reject/rank),
-  - Emitting per‑session metrics (latency, score breakdowns).
-- Use **POSIX sockets** and **epoll/select** style multiplexing to simulate real network load.
-
-You can think of this as an embedded controller that sits between field devices (or proposal sources) and the higher‑level ML services, providing **hard real‑time-ish behavior** and deterministic control logic.
+Full OpenAPI at **/docs** when the backend is running.
 
 ---
 
-### 2. Machine Learning Pipeline (`ml/`)
+## Documentation
 
-**Language:** Python 3.x  
-**Libraries:** `scikit-learn`, `pandas`, `numpy`, `joblib`
-
-**Responsibilities:**
-
-- Train sustainability‑aware models (e.g., regression or classification) on proposal data with features such as:
-  - Price,
-  - Delivery latency,
-  - Local vs remote flag,
-  - Historical sustainability scores,
-  - Vendor reliability metrics.
-- Export models as **Joblib artifacts** consumable by:
-  - The orchestration layer (Python),
-  - The firmware layer via IPC/file interfaces.
-- Provide a CLI‑style `predict_sustainability.py` script that can be called either:
-  - Directly from the command line, or
-  - From other components (e.g., Node.js, C wrappers, orchestration scripts).
-
-This directly backs the resume bullet:
-
-> Developed embedded decision engine using C, Python, and AI/ML algorithms…
-
-The ML models live here; the C engine consumes their outputs via clear interfaces.
+- **Product & requirements**: [docs/SPECIFICATION.md](docs/SPECIFICATION.md)
+- **Technical (backend, frontend, Docker, tests)**: [docs/TECHNICAL.md](docs/TECHNICAL.md)
+- **Embedded/ML (firmware, orchestration)**: see `docs/EMBEDDED_SYSTEMS_OVERVIEW.md`, `docs/ML_PIPELINE.md`, `docs/HACKNYU_2026_NOTES.md`
 
 ---
 
-### 3. Orchestration & Automation (`orchestration/` + `scripts/`)
-
-**Language:** Python & Bash (Linux‑first; works well in WSL).
-
-**Responsibilities:**
-
-- **Simulate 30–50+ concurrent sessions** sending proposals through the ML pipeline into the C decision engine.
-- Provide tools to:
-  - Run stress tests,
-  - Collect latency distributions,
-  - Compare different model versions or firmware builds.
-- Automate end‑to‑end flows:
-  - `scripts/run_all_linux.sh`:
-    1. Set up Python virtualenv and install ML dependencies.
-    2. Train or load an ML model.
-    3. Build the firmware via Make.
-    4. Launch session manager to simulate concurrent sessions.
-
-This is what substantiates:
-
-> …implemented automation tools using Python and Bash scripting, enabling 50+ concurrent sessions with real‑time processing.
-
----
-
-### 4. FPGA & Hardware–Software Integration (`fpga/`)
-
-**Language:** Verilog/VHDL + C (integration stubs).
-
-**Responsibilities:**
-
-- Document and prototype how **FPGA accelerators** would plug into the Eco‑Nexus data path:
-  - Example: offloading feature extraction or cryptographic checks to FPGA.
-- Provide **RTL skeletons** and **C header stubs** to demonstrate:
-  - Memory‑mapped I/O access patterns,
-  - Interrupt‑driven event handling,
-  - Latency‑sensitive data movement between CPU and FPGA regions.
-
-The goal here is to concretely connect firmware with hardware, supporting:
-
-> Built firmware components with FPGA development experience…
-
----
-
-### 5. Performance, Debugging & Optimization
-
-Across `firmware/`, `ml/`, and `orchestration/`, the project includes:
-
-- Timing hooks and basic profiling (e.g., timestamps per decision path).
-- Configurable logging levels for:
-  - Network events,
-  - ML inference times,
-  - End‑to‑end decision latency.
-- Scripts to compare **baseline vs optimized builds** (e.g., different compiler flags or ML models) and validate the **~35% processing time reduction** claim.
-
-These pieces align with:
-
-> Integrated hardware‑software interfaces, performed low‑level debugging and optimization on embedded Linux, reducing processing time by 35%…
-
----
-
-## 🚀 Getting Started (Linux / WSL)
-
-### 1. Clone & Prerequisites
-
-- **OS:** Ubuntu (bare metal or WSL2) recommended.
-- **Dependencies:**
-  - `gcc` or `clang`
-  - `make`
-  - `python3` + `python3-venv`
-  - `bash`
-
-```bash
-git clone <YOUR_REPO_URL> eco-nexus
-cd eco-nexus
-```
-
-> The legacy `server/` and `client/` directories are optional and not required for the embedded/ML pipeline.
-
-### 2. Run the End‑to‑End Demo
-
-```bash
-chmod +x scripts/run_all_linux.sh
-./scripts/run_all_linux.sh
-```
-
-This will:
-
-1. Create/activate a Python virtualenv.
-2. Install `ml/requirements.txt`.
-3. Train or load an ML model.
-4. Build the C firmware in `firmware/`.
-5. Launch `orchestration/session_manager.py` to simulate 30–50+ proposals/sessions.
-6. Print a summary of:
-   - Average decision latency,
-   - Throughput (# proposals evaluated),
-   - Per‑session outcomes.
-
----
-
-## 🧪 Reproducing HackNYU 2026 Results
-
-See `docs/HACKNYU_2026_NOTES.md` for:
-
-- The exact **scenario description** used in judging.
-- **Parameter sets** (number of proposals, concurrency, feature weights).
-- Steps to reproduce the ~35% latency improvement, including:
-  - Baseline vs optimized firmware builds,
-  - ML model versioning,
-  - Configuration of session concurrency.
-
----
-
-## 📚 Additional Documentation
-
-- `docs/EMBEDDED_SYSTEMS_OVERVIEW.md` – Architecture deep dive and data flow diagrams.
-- `docs/NETWORK_STACK_DESIGN.md` – Protocol, session lifecycle, and failure modes.
-- `docs/ML_PIPELINE.md` – Feature engineering, model selection, evaluation metrics.
-- `docs/HACKNYU_2026_NOTES.md` – Hackathon framing, demo script, and metrics.
-
-The legacy web marketplace and blockchain/analytics components from earlier iterations are still documented in:
-
-- `PROJECT_SUMMARY.md`
-- `API_DOCS.md`
-- `HACKATHON_NOTES.md`
-
-but can be treated as a previous phase of Eco‑Nexus.
-
----
-
-## 📝 License
+## License
 
 MIT License

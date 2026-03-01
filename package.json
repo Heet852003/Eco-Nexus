@@ -1,23 +1,25 @@
 {
   "name": "eco-nexus",
-  "version": "1.0.0",
-  "description": "Carbon Marketplace MVP - Sustainable Choice Operating System",
+  "version": "2025.1.0",
+  "description": "Eco-Nexus – IoT & SmartHome Application | Python, Vue.js, JavaScript, TypeScript | HackNYU 2026",
+  "private": true,
   "scripts": {
-    "dev:client": "cd client && npm run dev",
-    "dev:server": "cd server && npm run dev",
-    "install:all": "cd client && npm install && cd ../server && npm install",
-    "build:client": "cd client && npm run build",
-    "build:server": "cd server && npm run build"
+    "dev:backend": "cd backend && python run.py",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:frontend": "cd frontend && npm install",
+    "build:frontend": "cd frontend && npm run build",
+    "test:backend": "cd backend && pytest",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
   },
   "keywords": [
+    "iot",
+    "smarthome",
+    "vue",
+    "python",
+    "fastapi",
     "sustainability",
-    "multi-agent",
-    "blockchain",
-    "carbon-marketplace",
-    "mongodb",
-    "snowflake"
+    "hacknyu"
   ],
-  "author": "",
   "license": "MIT"
 }
-
